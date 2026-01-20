@@ -29,11 +29,11 @@ jobs:
       run: chmod +x gradlew
 
     - name: Build with Gradle
-      run: ./gradlew :jetstream:assembleDebug
+      run: ./gradlew :jetstream:assembleRelease
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: jetstream-debug
+        name: jetstream-release
         # NOTE: upload-artifact resolves from repo root
-        path: JetStreamCompose/jetstream/build/outputs/apk/debug/jetstream-debug.apk
+        path: JetStreamCompose/jetstream/build/outputs/apk/release/jetstream-release.apk

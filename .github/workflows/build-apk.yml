@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # THIS TELLS GITHUB TO WORK INSIDE THE JETSTREAM FOLDER
+    defaults:
+      run:
+        working-directory: ./JetStreamCompose
 
     steps:
     - uses: actions/checkout@v4
@@ -30,4 +35,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        # NOTE: The path is now relative to the working directory
+        path: JetStreamCompose/app/build/outputs/apk/debug/app-debug.apk

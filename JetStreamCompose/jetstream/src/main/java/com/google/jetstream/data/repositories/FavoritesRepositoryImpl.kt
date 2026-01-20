@@ -35,7 +35,7 @@ class FavoritesRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun getRecentHistory(limit: Int): Flow<List<WatchHistory>> {
+    override fun getRecentWatchHistory(limit: Int): Flow<List<WatchHistory>> {
         return watchHistoryDao.getRecentHistory(limit)
     }
 

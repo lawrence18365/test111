@@ -53,7 +53,7 @@ class LiveChannelsScreenViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<LiveChannelsUiState>(LiveChannelsUiState.Loading)
     val uiState: StateFlow<LiveChannelsUiState> = _uiState.asStateFlow()
-    val recentHistory: Flow<List<WatchHistory>> = favoritesRepository.getRecentHistory(12)
+    val recentHistory: Flow<List<WatchHistory>> = favoritesRepository.getRecentWatchHistory(12)
 
     private var allChannels: List<XtreamChannel> = emptyList()
     private var categories: List<XtreamCategory> = emptyList()

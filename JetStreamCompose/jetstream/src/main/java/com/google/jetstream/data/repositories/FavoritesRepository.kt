@@ -11,7 +11,7 @@ interface FavoritesRepository {
     suspend fun toggleFavorite(favorite: FavoriteChannel)
     
     // History methods
-    fun getRecentHistory(limit: Int): Flow<List<WatchHistory>>
+    fun getRecentWatchHistory(limit: Int): Flow<List<WatchHistory>>
     suspend fun addToHistory(
         streamId: Int,
         name: String,

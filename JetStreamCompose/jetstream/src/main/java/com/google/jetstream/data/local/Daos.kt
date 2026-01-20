@@ -91,7 +91,11 @@ interface WatchHistoryDao {
     @Query("SELECT lastPositionMs FROM watch_history WHERE streamId = :streamId")
     suspend fun getLastPosition(streamId: Int): Long?
 
-    @Query("UPDATE watch_history SET lastPositionMs = :positionMs, progressPercent = :progress WHERE streamId = :streamId")
+    @Query(
+        "UPDATE watch_history " +
+            "SET lastPositionMs = :positionMs, progressPercent = :progress " +
+            "WHERE streamId = :streamId"
+    )
     suspend fun updatePlaybackProgress(streamId: Int, positionMs: Long, progress: Float)
 }
 

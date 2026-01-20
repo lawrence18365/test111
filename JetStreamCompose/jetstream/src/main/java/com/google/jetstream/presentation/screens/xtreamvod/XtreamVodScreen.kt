@@ -34,7 +34,7 @@ import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.MaterialTheme
@@ -189,7 +189,11 @@ private fun VodCategoryFilterRow(
             }
         }
 
-        items(categories, key = { it.categoryId }) { category ->
+        items(
+            count = categories.size,
+            key = { index -> categories[index].categoryId }
+        ) { index ->
+            val category = categories[index]
             FilterChip(
                 selected = selectedCategoryId == category.categoryId,
                 onClick = { onCategorySelected(category.categoryId) }

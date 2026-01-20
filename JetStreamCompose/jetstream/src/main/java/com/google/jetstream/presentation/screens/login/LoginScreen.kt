@@ -39,12 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.CircularProgressIndicator
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
-import androidx.tv.material3.TextField
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextField
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable

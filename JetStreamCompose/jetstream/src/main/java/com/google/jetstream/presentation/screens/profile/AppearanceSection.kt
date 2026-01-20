@@ -14,11 +14,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.google.jetstream.presentation.theme.ThemeOption
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun AppearanceSection(
     viewModel: SettingsViewModel = hiltViewModel()

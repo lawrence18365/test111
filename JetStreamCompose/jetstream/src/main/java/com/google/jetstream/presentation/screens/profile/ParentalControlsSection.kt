@@ -30,7 +30,7 @@ import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Switch
 import androidx.tv.material3.SwitchDefaults
 import androidx.tv.material3.Text
-import androidx.tv.material3.TextField
+import androidx.compose.material3.TextField
 import androidx.tv.material3.surfaceColorAtElevation
 import com.google.jetstream.presentation.theme.JetStreamCardShape
 

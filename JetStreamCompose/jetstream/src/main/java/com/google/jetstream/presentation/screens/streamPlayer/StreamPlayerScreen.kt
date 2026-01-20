@@ -82,7 +82,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.tv.material3.TextField
+import androidx.compose.material3.TextField
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
@@ -167,6 +167,12 @@ fun StreamPlayerScreen(
         }
     }
 
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            playWhenReady = true
+        }
+    }
+
     // Update time every second
     LaunchedEffect(Unit) {
         while (true) {
@@ -223,12 +229,6 @@ fun StreamPlayerScreen(
             exoPlayer.pause()
         } else if (isPinGateActive && !exoPlayer.isPlaying) {
             exoPlayer.play()
-        }
-    }
-
-    val exoPlayer = remember {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
         }
     }
 
@@ -597,7 +597,7 @@ fun StreamPlayerScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    androidx.tv.material3.CircularProgressIndicator(
+                    androidx.compose.material3.CircularProgressIndicator(
                         color = Color.White,
                         modifier = Modifier.size(48.dp)
                     )

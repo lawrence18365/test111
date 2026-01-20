@@ -22,13 +22,18 @@ enum class CountryFilter(
     val displayName: String,
     private val matchers: List<Regex>
 ) {
+    ALL(
+        displayName = "All",
+        matchers = listOf(Regex(".*")) // Matches everything
+    ),
     IRELAND(
         displayName = "Ireland",
         matchers = listOf(
             Regex("\\bireland\\b"),
             Regex("\\birish\\b"),
             Regex("\\beire\\b"),
-            Regex("\\birl\\b")
+            Regex("\\birl\\b"),
+            Regex("\\bie\\b") // Added IE
         )
     ),
     USA(
@@ -58,15 +63,17 @@ enum class CountryFilter(
     );
 
     fun matches(categoryName: String): Boolean {
+        if (this == ALL) return true
         val normalized = normalize(categoryName)
         return matchers.any { it.containsMatchIn(normalized) }
     }
 }
 
 val DefaultCountryFilters: List<CountryFilter> = listOf(
+    CountryFilter.ALL,
     CountryFilter.IRELAND,
-    CountryFilter.USA,
-    CountryFilter.UK
+    CountryFilter.UK,
+    CountryFilter.USA
 )
 
 fun categoryIdsForCountry(

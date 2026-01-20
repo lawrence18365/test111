@@ -97,6 +97,28 @@ class XtreamSeriesScreenViewModel @Inject constructor(
                 isLoadingSeries = true
             )
 
+            // Optimization for ALL: Fetch everything in one go
+            if (country == CountryFilter.ALL) {
+                when (val result = xtreamRepository.getSeries()) {
+                    is XtreamResult.Success -> {
+                        val items = result.data
+                        countryCache[country] = items
+                        _uiState.value = XtreamSeriesUiState.Ready(
+                            categories = categories,
+                            selectedCountry = country,
+                            seriesList = items,
+                            isLoadingSeries = false
+                        )
+                        return@launch
+                    }
+                    is XtreamResult.Error -> {
+                        _uiState.value = XtreamSeriesUiState.Error(result.message)
+                        return@launch
+                    }
+                    else -> {}
+                }
+            }
+
             val categoryIds = categoryIdsForCountry(categories, country)
             if (categoryIds.isEmpty()) {
                 _uiState.value = XtreamSeriesUiState.Ready(

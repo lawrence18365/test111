@@ -16,10 +16,13 @@
 
 package com.google.jetstream.data.repositories
 
+import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieCategoryDetails
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.entities.MovieList
 import com.google.jetstream.data.entities.ThumbnailType
+import com.google.jetstream.data.repositories.xtream.XtreamRepository
+import com.google.jetstream.data.repositories.xtream.XtreamResult
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
@@ -27,113 +30,204 @@ import kotlinx.coroutines.flow.flow
 
 @Singleton
 class MovieRepositoryImpl @Inject constructor(
-    private val movieDataSource: MovieDataSource,
-    private val tvDataSource: TvDataSource,
-    private val movieCastDataSource: MovieCastDataSource,
-    private val movieCategoryDataSource: MovieCategoryDataSource,
+    private val xtreamRepository: XtreamRepository
 ) : MovieRepository {
 
     override fun getFeaturedMovies() = flow {
-        val list = movieDataSource.getFeaturedMovieList()
-        emit(list)
+        // For featured, we can just return a subset of movies or specific logic
+        val list = fetchMovies()
+        emit(list.shuffled().take(10))
     }
 
     override fun getTrendingMovies(): Flow<MovieList> = flow {
-        val list = movieDataSource.getTrendingMovieList()
-        emit(list)
+        val list = fetchMovies()
+        emit(list.take(15))
     }
 
     override fun getTop10Movies(): Flow<MovieList> = flow {
-        val list = movieDataSource.getTop10MovieList()
-        emit(list)
+        val list = fetchMovies()
+        emit(list.sortedByDescending { it.id }.take(10))
     }
 
     override fun getNowPlayingMovies(): Flow<MovieList> = flow {
-        val list = movieDataSource.getNowPlayingMovieList()
-        emit(list)
+        val list = fetchMovies()
+        emit(list.shuffled().take(10))
     }
 
     override fun getMovieCategories() = flow {
-        val list = movieCategoryDataSource.getMovieCategoryList()
+        // This expects MovieCategoryList which is List<MovieCategory>
+        // We need to map Xtream categories
+        val result = xtreamRepository.getVodCategories()
+        val list = if (result is XtreamResult.Success) {
+            result.data.map { 
+                com.google.jetstream.data.entities.MovieCategory(
+                    id = it.categoryId,
+                    name = it.categoryName
+                )
+            }
+        } else {
+            emptyList()
+        }
         emit(list)
     }
 
     override suspend fun getMovieCategoryDetails(categoryId: String): MovieCategoryDetails {
-        val categoryList = movieCategoryDataSource.getMovieCategoryList()
-        val category = categoryList.find { categoryId == it.id } ?: categoryList.first()
+        val categoriesResult = xtreamRepository.getVodCategories()
+        val categoryName = if (categoriesResult is XtreamResult.Success) {
+            categoriesResult.data.find { it.categoryId == categoryId }?.categoryName ?: "Category"
+        } else "Category"
 
-        val movieList = movieDataSource.getMovieList().shuffled().subList(0, 20)
+        val moviesResult = xtreamRepository.getVodStreamsByCategory(categoryId)
+        val movieList = if (moviesResult is XtreamResult.Success) {
+            moviesResult.data.map { item ->
+                Movie(
+                    id = item.streamId.toString(),
+                    videoUri = "", 
+                    subtitleUri = null,
+                    posterUri = item.streamIcon ?: "",
+                    name = item.name,
+                    description = "",
+                    category = "VOD"
+                )
+            }
+        } else {
+            emptyList()
+        }
 
         return MovieCategoryDetails(
-            id = category.id,
-            name = category.name,
+            id = categoryId,
+            name = categoryName,
             movies = movieList
         )
     }
 
     override suspend fun getMovieDetails(movieId: String): MovieDetails {
-        val movieList = movieDataSource.getMovieList()
-        val movie = movieList.find { it.id == movieId } ?: movieList.first()
-        val categories = movie.category.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val similarMovieList = movieList.filter { it.id != movie.id }.take(10)
-
-        return MovieDetails(
-            id = movie.id,
-            videoUri = movie.videoUri,
-            subtitleUri = movie.subtitleUri,
-            posterUri = movie.posterUri,
-            name = movie.name,
-            description = movie.description,
-            pgRating = "LIVE",
-            releaseDate = "Live",
-            categories = categories.ifEmpty { listOf("Live") },
-            duration = "24/7",
-            director = movie.category.ifBlank { "Uncategorized" },
-            screenplay = movie.language.ifBlank { "Unknown" },
-            music = movie.format.ifBlank { "HLS" },
-            castAndCrew = emptyList(),
-            status = "Live",
-            originalLanguage = movie.language.ifBlank { "Unknown" },
-            budget = "-",
-            revenue = "-",
-            similarMovies = similarMovieList,
-            reviewsAndRatings = emptyList(),
-        )
+        // Check if it is a Series or Movie. IDs might overlap, but for now assuming VOD first.
+        // Or try both.
+        val id = movieId.toIntOrNull() ?: return emptyMovieDetails(movieId)
+        
+        // Try VOD Info first
+        val vodResult = xtreamRepository.getVodInfo(id)
+        if (vodResult is XtreamResult.Success) {
+            val info = vodResult.data.info
+            val movieData = vodResult.data.movieData
+            val streamUrl = xtreamRepository.buildVodStreamUrl(id, movieData?.containerExtension ?: "mp4") ?: ""
+            
+            return MovieDetails(
+                id = movieId,
+                videoUri = streamUrl,
+                subtitleUri = null,
+                posterUri = info?.movieImage ?: "",
+                name = movieData?.name ?: info?.name ?: "Unknown",
+                description = info?.plot ?: "",
+                pgRating = info?.rating ?: "",
+                releaseDate = info?.releaseDate ?: "",
+                categories = listOf(info?.genre ?: "VOD"),
+                duration = info?.duration ?: "",
+                director = info?.director ?: "",
+                screenplay = "",
+                music = "",
+                castAndCrew = emptyList(),
+                status = "Released",
+                originalLanguage = "",
+                budget = "",
+                revenue = "",
+                similarMovies = emptyList(),
+                reviewsAndRatings = emptyList()
+            )
+        }
+        
+        // Fallback to Series Info if VOD fails (hacky but handles unified ID system if any)
+        // Ideally we should know type. But standard interface doesn't pass type.
+        
+        return emptyMovieDetails(movieId)
     }
+
+    private fun emptyMovieDetails(movieId: String) = MovieDetails(
+        id = movieId,
+        videoUri = "",
+        subtitleUri = null,
+        posterUri = "",
+        name = "Error loading details",
+        description = "Could not fetch details for this content.",
+        pgRating = "",
+        releaseDate = "",
+        categories = emptyList(),
+        duration = "",
+        director = "",
+        screenplay = "",
+        music = "",
+        castAndCrew = emptyList(),
+        status = "",
+        originalLanguage = "",
+        budget = "",
+        revenue = "",
+        similarMovies = emptyList(),
+        reviewsAndRatings = emptyList()
+    )
 
     override suspend fun searchMovies(query: String): MovieList {
-        return movieDataSource.getMovieList().filter {
-            it.name.contains(other = query, ignoreCase = true)
-        }
+        val movies = fetchMovies()
+        return movies.filter { it.name.contains(query, ignoreCase = true) }
     }
 
-    override fun getMoviesWithLongThumbnail() = flow {
-        val list = movieDataSource.getMovieList(ThumbnailType.Long)
-        emit(list)
-    }
+    override fun getMoviesWithLongThumbnail() = getMovies()
 
     override fun getMovies(): Flow<MovieList> = flow {
-        val list = movieDataSource.getMovieList()
-        emit(list)
+        emit(fetchMovies())
     }
 
     override fun getPopularFilmsThisWeek(): Flow<MovieList> = flow {
-        val list = movieDataSource.getPopularFilmThisWeek()
-        emit(list)
+        val list = fetchMovies()
+        emit(list.sortedByDescending { it.name }.take(15)) // Mock sorting
     }
 
     override fun getTVShows(): Flow<MovieList> = flow {
-        val list = tvDataSource.getTvShowList()
+        val result = xtreamRepository.getSeries()
+        val list = if (result is XtreamResult.Success) {
+            result.data.map { item ->
+                Movie(
+                    id = item.seriesId.toString(),
+                    videoUri = "",
+                    subtitleUri = null,
+                    posterUri = item.cover ?: "",
+                    name = item.name,
+                    description = item.plot ?: "",
+                    category = "Series"
+                )
+            }
+        } else {
+            emptyList()
+        }
         emit(list)
     }
 
     override fun getBingeWatchDramas(): Flow<MovieList> = flow {
-        val list = tvDataSource.getBingeWatchDramaList()
-        emit(list)
+        val list = fetchMovies() // Placeholder, using movies
+        emit(list.take(5))
     }
 
+    // This method is deprecated by FavoritesRepository but kept for interface compat
     override fun getFavouriteMovies(): Flow<MovieList> = flow {
-        val list = movieDataSource.getFavoriteMovieList()
-        emit(list)
+        emit(emptyList()) 
+    }
+    
+    private suspend fun fetchMovies(): List<Movie> {
+        val result = xtreamRepository.getVodStreams()
+        return if (result is XtreamResult.Success) {
+            result.data.map { item ->
+                Movie(
+                    id = item.streamId.toString(),
+                    videoUri = "", 
+                    subtitleUri = null,
+                    posterUri = item.streamIcon ?: "",
+                    name = item.name,
+                    description = "", // Description often not in list
+                    category = "VOD"
+                )
+            }
+        } else {
+            emptyList()
+        }
     }
 }

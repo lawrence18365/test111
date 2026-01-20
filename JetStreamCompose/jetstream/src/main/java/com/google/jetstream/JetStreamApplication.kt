@@ -19,13 +19,12 @@ package com.google.jetstream
 import android.app.Application
 import com.google.jetstream.data.repositories.MovieRepository
 import com.google.jetstream.data.repositories.MovieRepositoryImpl
+import com.google.jetstream.data.util.GlobalExceptionHandler
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
-
-import com.google.jetstream.data.util.GlobalExceptionHandler
 
 @HiltAndroidApp
 class JetStreamApplication : Application() {

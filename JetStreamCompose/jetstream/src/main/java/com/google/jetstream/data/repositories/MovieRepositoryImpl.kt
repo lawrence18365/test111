@@ -58,16 +58,17 @@ class MovieRepositoryImpl @Inject constructor(
         // This expects MovieCategoryList which is List<MovieCategory>
         // We need to map Xtream categories
         val result = xtreamRepository.getVodCategories()
-        val list = if (result is XtreamResult.Success) {
-            result.data.map { 
-                com.google.jetstream.data.entities.MovieCategory(
-                    id = it.categoryId,
-                    name = it.categoryName
-                )
+        val list =
+            if (result is XtreamResult.Success) {
+                result.data.map {
+                    com.google.jetstream.data.entities.MovieCategory(
+                        id = it.categoryId,
+                        name = it.categoryName
+                    )
+                }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
-        }
         emit(list)
     }
 
@@ -111,7 +112,8 @@ class MovieRepositoryImpl @Inject constructor(
         if (vodResult is XtreamResult.Success) {
             val info = vodResult.data.info
             val movieData = vodResult.data.movieData
-            val streamUrl = xtreamRepository.buildVodStreamUrl(id, movieData?.containerExtension ?: "mp4") ?: ""
+            val extension = movieData?.containerExtension ?: "mp4"
+            val streamUrl = xtreamRepository.buildVodStreamUrl(id, extension) ?: ""
             
             return MovieDetails(
                 id = movieId,
@@ -208,10 +210,11 @@ class MovieRepositoryImpl @Inject constructor(
     }
 
     // This method is deprecated by FavoritesRepository but kept for interface compat
-    override fun getFavouriteMovies(): Flow<MovieList> = flow {
-        emit(emptyList()) 
-    }
-    
+    override fun getFavouriteMovies(): Flow<MovieList> =
+        flow {
+            emit(emptyList())
+        }
+
     private suspend fun fetchMovies(): List<Movie> {
         val result = xtreamRepository.getVodStreams()
         return if (result is XtreamResult.Success) {

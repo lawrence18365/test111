@@ -40,9 +40,8 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/stream_one_logo"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:fullBackupContent="true">
@@ -50,9 +49,9 @@
         <activity
             android:exported="true"
             android:name="com.android.tv.classics.MainActivity"
-            android:icon="@mipmap/ic_launcher"
-            android:logo="@mipmap/ic_app_banner"
-            android:banner="@mipmap/ic_app_banner"
+            android:icon="@drawable/stream_one_logo"
+            android:logo="@drawable/stream_one_logo"
+            android:banner="@drawable/stream_one_banner"
             android:label="@string/app_name"
             android:screenOrientation="landscape">
 

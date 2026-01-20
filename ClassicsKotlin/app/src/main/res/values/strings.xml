@@ -15,7 +15,7 @@
   ~ limitations under the License.
   -->
 <resources>
-    <string name="app_name">TV Classics</string>
+    <string name="app_name">StreamOne Classics</string>
 
     <!-- The hint text that appears in the search box -->
     <string name="search_hint">Search for movies</string>

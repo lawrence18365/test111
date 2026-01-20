@@ -134,6 +134,67 @@ data class XtreamEpgListing(
 )
 
 /**
+ * Series info response from get_series_info action
+ */
+@Serializable
+data class XtreamSeriesInfo(
+    val seasons: List<XtreamSeason> = emptyList(),
+    val info: XtreamSeriesDetails? = null,
+    val episodes: Map<String, List<XtreamEpisode>> = emptyMap()
+)
+
+@Serializable
+data class XtreamSeason(
+    @SerialName("season_number") val seasonNumber: Int,
+    val name: String? = null,
+    @SerialName("episode_count") val episodeCount: Int? = null,
+    val cover: String? = null,
+    @SerialName("cover_big") val coverBig: String? = null
+)
+
+@Serializable
+data class XtreamSeriesDetails(
+    val name: String? = null,
+    val cover: String? = null,
+    val plot: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val genre: String? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    val rating: String? = null,
+    @SerialName("rating_5based") val rating5Based: Double? = null,
+    @SerialName("backdrop_path") val backdropPath: List<String>? = null,
+    @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
+    @SerialName("episode_run_time") val episodeRunTime: String? = null,
+    @SerialName("category_id") val categoryId: String? = null
+)
+
+@Serializable
+data class XtreamEpisode(
+    val id: String? = null,
+    @SerialName("episode_num") val episodeNum: Int,
+    val title: String? = null,
+    @SerialName("container_extension") val containerExtension: String? = null,
+    val info: XtreamEpisodeInfo? = null,
+    @SerialName("custom_sid") val customSid: String? = null,
+    val added: String? = null,
+    val season: Int? = null,
+    @SerialName("direct_source") val directSource: String? = null
+)
+
+@Serializable
+data class XtreamEpisodeInfo(
+    @SerialName("movie_image") val movieImage: String? = null,
+    val plot: String? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    val rating: Double? = null,
+    val name: String? = null,
+    @SerialName("duration_secs") val durationSecs: Int? = null,
+    val duration: String? = null,
+    val bitrate: Int? = null
+)
+
+/**
  * Credentials stored locally
  */
 @Serializable

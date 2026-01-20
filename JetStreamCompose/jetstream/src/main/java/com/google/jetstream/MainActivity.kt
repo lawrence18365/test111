@@ -45,8 +45,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var settingsRepository: SettingsRepository
 
+    private var isAuthReady = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+
+        // Keep splash screen visible until auth state is determined
+        splashScreen.setKeepOnScreenCondition { !isAuthReady }
+
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -62,7 +68,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         App(
                             onBackPressed = onBackPressedDispatcher::onBackPressed,
-                            xtreamRepository = xtreamRepository
+                            xtreamRepository = xtreamRepository,
+                            onAuthReady = { isAuthReady = true }
                         )
                     }
                 }

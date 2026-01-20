@@ -1,5 +1,6 @@
 /*
  * Xtream Search Screen ViewModel - Search across all content types
+ * Fixed: Load data on-demand when user searches, with proper error handling
  */
 package com.google.jetstream.presentation.screens.xtreamsearch
 
@@ -12,6 +13,7 @@ import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,8 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 sealed class SearchResult {
@@ -34,13 +38,16 @@ enum class SearchFilter {
 data class SearchUiState(
     val query: String = "",
     val isLoading: Boolean = false,
+    val isLoadingData: Boolean = false,
     val results: List<SearchResult> = emptyList(),
     val filter: SearchFilter = SearchFilter.ALL,
-    val recentSearches: List<String> = emptyList(),
     val error: String? = null,
-    val totalChannels: Int = 0,
-    val totalVod: Int = 0,
-    val totalSeries: Int = 0
+    val channelsLoaded: Boolean = false,
+    val vodLoaded: Boolean = false,
+    val seriesLoaded: Boolean = false,
+    val channelsError: String? = null,
+    val vodError: String? = null,
+    val seriesError: String? = null
 )
 
 @OptIn(FlowPreview::class)
@@ -54,11 +61,13 @@ class XtreamSearchViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
 
-    // Cached data for faster searching
-    private var allChannels: List<XtreamChannel> = emptyList()
-    private var allVod: List<XtreamVodItem> = emptyList()
-    private var allSeries: List<XtreamSeries> = emptyList()
-    private var dataLoaded = false
+    // Cached data for searching - loaded on demand
+    private var cachedChannels: List<XtreamChannel>? = null
+    private var cachedVod: List<XtreamVodItem>? = null
+    private var cachedSeries: List<XtreamSeries>? = null
+
+    // Mutex for thread-safe cache access
+    private val cacheMutex = Mutex()
 
     init {
         // Debounce search queries
@@ -72,59 +81,13 @@ class XtreamSearchViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             query = "",
                             results = emptyList(),
-                            isLoading = false
+                            isLoading = false,
+                            error = null
                         )
                     } else {
                         performSearch(query)
                     }
                 }
-        }
-
-        // Load all data in background
-        loadAllData()
-    }
-
-    private fun loadAllData() {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true)
-
-            // Load channels
-            when (val result = xtreamRepository.getLiveStreams()) {
-                is XtreamResult.Success -> {
-                    allChannels = result.data
-                    _uiState.value = _uiState.value.copy(totalChannels = result.data.size)
-                }
-                is XtreamResult.Error -> { /* ignore */ }
-                else -> {}
-            }
-
-            // Load VOD
-            when (val result = xtreamRepository.getVodStreams()) {
-                is XtreamResult.Success -> {
-                    allVod = result.data
-                    _uiState.value = _uiState.value.copy(totalVod = result.data.size)
-                }
-                is XtreamResult.Error -> { /* ignore */ }
-                else -> {}
-            }
-
-            // Load Series
-            when (val result = xtreamRepository.getSeries()) {
-                is XtreamResult.Success -> {
-                    allSeries = result.data
-                    _uiState.value = _uiState.value.copy(totalSeries = result.data.size)
-                }
-                is XtreamResult.Error -> { /* ignore */ }
-                else -> {}
-            }
-
-            dataLoaded = true
-            _uiState.value = _uiState.value.copy(isLoading = false)
-
-            // If there's a pending query, search now
-            if (_uiState.value.query.isNotEmpty()) {
-                performSearch(_uiState.value.query)
-            }
         }
     }
 
@@ -141,61 +104,157 @@ class XtreamSearchViewModel @Inject constructor(
     }
 
     private fun performSearch(query: String) {
-        if (!dataLoaded) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, query = query, error = null)
 
-        _uiState.value = _uiState.value.copy(isLoading = true, query = query)
+            val filter = _uiState.value.filter
 
-        val queryLower = query.lowercase()
-        val filter = _uiState.value.filter
-        val results = mutableListOf<SearchResult>()
+            // Load required data based on filter (on-demand)
+            val dataLoadNeeded = when (filter) {
+                SearchFilter.ALL -> cachedChannels == null || cachedVod == null || cachedSeries == null
+                SearchFilter.LIVE -> cachedChannels == null
+                SearchFilter.MOVIES -> cachedVod == null
+                SearchFilter.SERIES -> cachedSeries == null
+            }
 
-        // Search channels
-        if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
-            allChannels
-                .filter { it.name.lowercase().contains(queryLower) }
-                .take(50)
-                .forEach { results.add(SearchResult.Channel(it)) }
-        }
+            if (dataLoadNeeded) {
+                _uiState.value = _uiState.value.copy(isLoadingData = true)
+                loadRequiredData(filter)
+                _uiState.value = _uiState.value.copy(isLoadingData = false)
+            }
 
-        // Search VOD
-        if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
-            allVod
-                .filter { it.name.lowercase().contains(queryLower) }
-                .take(50)
-                .forEach { results.add(SearchResult.Vod(it)) }
-        }
+            // Perform the actual search
+            val queryLower = query.lowercase()
+            val results = mutableListOf<SearchResult>()
 
-        // Search Series
-        if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
-            allSeries
-                .filter {
-                    it.name.lowercase().contains(queryLower) ||
-                    it.genre?.lowercase()?.contains(queryLower) == true
+            cacheMutex.withLock {
+                // Search channels
+                if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
+                    cachedChannels?.asSequence()
+                        ?.filter { it.name.lowercase().contains(queryLower) }
+                        ?.take(50)
+                        ?.forEach { results.add(SearchResult.Channel(it)) }
                 }
-                .take(50)
-                .forEach { results.add(SearchResult.Series(it)) }
+
+                // Search VOD
+                if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
+                    cachedVod?.asSequence()
+                        ?.filter { it.name.lowercase().contains(queryLower) }
+                        ?.take(50)
+                        ?.forEach { results.add(SearchResult.Vod(it)) }
+                }
+
+                // Search Series
+                if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
+                    cachedSeries?.asSequence()
+                        ?.filter {
+                            it.name.lowercase().contains(queryLower) ||
+                            it.genre?.lowercase()?.contains(queryLower) == true
+                        }
+                        ?.take(50)
+                        ?.forEach { results.add(SearchResult.Series(it)) }
+                }
+            }
+
+            // Sort by relevance (exact matches first)
+            val sortedResults = results.sortedByDescending { result ->
+                val name = when (result) {
+                    is SearchResult.Channel -> result.channel.name
+                    is SearchResult.Vod -> result.vod.name
+                    is SearchResult.Series -> result.series.name
+                }.lowercase()
+
+                when {
+                    name == queryLower -> 3
+                    name.startsWith(queryLower) -> 2
+                    else -> 1
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                results = sortedResults,
+                isLoading = false
+            )
         }
+    }
 
-        // Sort by relevance (exact matches first)
-        val sortedResults = results.sortedByDescending { result ->
-            val name = when (result) {
-                is SearchResult.Channel -> result.channel.name
-                is SearchResult.Vod -> result.vod.name
-                is SearchResult.Series -> result.series.name
-            }.lowercase()
-
-            when {
-                name == queryLower -> 3
-                name.startsWith(queryLower) -> 2
-                else -> 1
+    private suspend fun loadRequiredData(filter: SearchFilter) {
+        cacheMutex.withLock {
+            when (filter) {
+                SearchFilter.ALL -> {
+                    // Load all in parallel
+                    val channelsDeferred = viewModelScope.async { loadChannelsIfNeeded() }
+                    val vodDeferred = viewModelScope.async { loadVodIfNeeded() }
+                    val seriesDeferred = viewModelScope.async { loadSeriesIfNeeded() }
+                    channelsDeferred.await()
+                    vodDeferred.await()
+                    seriesDeferred.await()
+                }
+                SearchFilter.LIVE -> loadChannelsIfNeeded()
+                SearchFilter.MOVIES -> loadVodIfNeeded()
+                SearchFilter.SERIES -> loadSeriesIfNeeded()
             }
         }
+    }
 
-        _uiState.value = _uiState.value.copy(
-            results = sortedResults,
-            isLoading = false,
-            error = null
-        )
+    private suspend fun loadChannelsIfNeeded() {
+        if (cachedChannels != null) return
+
+        when (val result = xtreamRepository.getLiveStreams()) {
+            is XtreamResult.Success -> {
+                cachedChannels = result.data
+                _uiState.value = _uiState.value.copy(
+                    channelsLoaded = true,
+                    channelsError = null
+                )
+            }
+            is XtreamResult.Error -> {
+                _uiState.value = _uiState.value.copy(
+                    channelsError = result.message
+                )
+            }
+            else -> {}
+        }
+    }
+
+    private suspend fun loadVodIfNeeded() {
+        if (cachedVod != null) return
+
+        when (val result = xtreamRepository.getVodStreams()) {
+            is XtreamResult.Success -> {
+                cachedVod = result.data
+                _uiState.value = _uiState.value.copy(
+                    vodLoaded = true,
+                    vodError = null
+                )
+            }
+            is XtreamResult.Error -> {
+                _uiState.value = _uiState.value.copy(
+                    vodError = result.message
+                )
+            }
+            else -> {}
+        }
+    }
+
+    private suspend fun loadSeriesIfNeeded() {
+        if (cachedSeries != null) return
+
+        when (val result = xtreamRepository.getSeries()) {
+            is XtreamResult.Success -> {
+                cachedSeries = result.data
+                _uiState.value = _uiState.value.copy(
+                    seriesLoaded = true,
+                    seriesError = null
+                )
+            }
+            is XtreamResult.Error -> {
+                _uiState.value = _uiState.value.copy(
+                    seriesError = result.message
+                )
+            }
+            else -> {}
+        }
     }
 
     suspend fun getChannelStreamUrl(channel: XtreamChannel): String? {
@@ -208,7 +267,31 @@ class XtreamSearchViewModel @Inject constructor(
     }
 
     fun clearSearch() {
-        _uiState.value = SearchUiState()
+        _uiState.value = _uiState.value.copy(
+            query = "",
+            results = emptyList(),
+            isLoading = false,
+            error = null
+        )
         _searchQuery.value = ""
+    }
+
+    fun retry() {
+        // Clear cache to force reload
+        viewModelScope.launch {
+            cacheMutex.withLock {
+                if (_uiState.value.channelsError != null) cachedChannels = null
+                if (_uiState.value.vodError != null) cachedVod = null
+                if (_uiState.value.seriesError != null) cachedSeries = null
+            }
+            _uiState.value = _uiState.value.copy(
+                channelsError = null,
+                vodError = null,
+                seriesError = null
+            )
+            if (_uiState.value.query.isNotEmpty()) {
+                performSearch(_uiState.value.query)
+            }
+        }
     }
 }

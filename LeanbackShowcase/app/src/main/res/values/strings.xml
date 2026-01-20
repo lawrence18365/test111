@@ -14,8 +14,8 @@
   ~
   -->
 <resources>
-    <string name="app_name">ShowcaseApp</string>
-    <string name="browse_title"><![CDATA[androidTV]]></string>
+    <string name="app_name">StreamOne Showcase</string>
+    <string name="browse_title"><![CDATA[StreamOne]]></string>
 
     <!-- Error messages -->
     <string name="implement_search">Implement your own in-app search.</string>

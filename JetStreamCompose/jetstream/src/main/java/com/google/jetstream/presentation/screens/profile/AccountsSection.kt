@@ -23,16 +23,20 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
+import kotlinx.coroutines.launch
 
 @Immutable
 data class AccountsSectionData(
@@ -42,28 +46,29 @@ data class AccountsSectionData(
 )
 
 @Composable
-fun AccountsSection() {
+fun AccountsSection(
+    viewModel: AccountsSectionViewModel = hiltViewModel()
+) {
     val childPadding = rememberChildPadding()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
-    val accountsSectionListItems = remember {
+    val coroutineScope = rememberCoroutineScope()
+
+    // Get current username from credentials
+    val credentials by viewModel.credentials.collectAsState(initial = null)
+    val userDisplayName = credentials?.username ?: "Not logged in"
+
+    val accountsSectionListItems = remember(userDisplayName) {
         listOf(
             AccountsSectionData(
-                title = StringConstants.Composable.Placeholders
-                    .AccountsSelectionSwitchAccountsTitle,
-                value = StringConstants.Composable.Placeholders.AccountsSelectionSwitchAccountsEmail
+                title = "Current Account",
+                value = userDisplayName
             ),
             AccountsSectionData(
                 title = StringConstants.Composable.Placeholders.AccountsSelectionLogOut,
-                value = StringConstants.Composable.Placeholders.AccountsSelectionSwitchAccountsEmail
-            ),
-            AccountsSectionData(
-                title = StringConstants.Composable.Placeholders
-                    .AccountsSelectionChangePasswordTitle,
-                value = StringConstants.Composable.Placeholders.AccountsSelectionChangePasswordValue
-            ),
-            AccountsSectionData(
-                title = StringConstants.Composable.Placeholders.AccountsSelectionAddNewAccountTitle,
+                value = userDisplayName,
+                onClick = { showLogoutDialog = true }
             ),
             AccountsSectionData(
                 title = StringConstants.Composable.Placeholders
@@ -92,6 +97,23 @@ fun AccountsSection() {
         }
     )
 
+    // Logout confirmation dialog
+    AccountsSectionDeleteDialog(
+        showDialog = showLogoutDialog,
+        onDismissRequest = { showLogoutDialog = false },
+        title = "Log Out",
+        text = "Are you sure you want to log out?",
+        confirmText = "Log Out",
+        onConfirm = {
+            coroutineScope.launch {
+                viewModel.logout()
+            }
+            showLogoutDialog = false
+        },
+        modifier = Modifier.width(428.dp)
+    )
+
+    // Delete account dialog
     AccountsSectionDeleteDialog(
         showDialog = showDeleteDialog,
         onDismissRequest = { showDeleteDialog = false },

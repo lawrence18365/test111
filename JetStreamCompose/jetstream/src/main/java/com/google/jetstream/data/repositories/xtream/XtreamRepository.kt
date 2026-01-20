@@ -14,6 +14,7 @@ import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.models.xtream.XtreamCredentials
 import com.google.jetstream.data.models.xtream.XtreamSeries
+import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
 import com.google.jetstream.data.models.xtream.XtreamUrlBuilder
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.network.XtreamApiService
@@ -230,6 +231,26 @@ class XtreamRepository @Inject constructor(
     }
 
     /**
+     * Get VOD streams by category
+     */
+    suspend fun getVodStreamsByCategory(categoryId: String): XtreamResult<List<XtreamVodItem>> {
+        val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
+        return try {
+            val url = XtreamUrlBuilder.buildApiUrl(
+                creds.serverUrl, creds.username, creds.password, "get_vod_streams"
+            ) + "&category_id=$categoryId"
+            val response = apiService.getVodStreamsByCategory(url)
+            if (response.isSuccessful) {
+                XtreamResult.Success(response.body() ?: emptyList())
+            } else {
+                XtreamResult.Error("Failed to fetch VOD streams", response.code())
+            }
+        } catch (e: Exception) {
+            XtreamResult.Error("Error: ${e.message}")
+        }
+    }
+
+    /**
      * Get series categories
      */
     suspend fun getSeriesCategories(): XtreamResult<List<XtreamCategory>> {
@@ -267,6 +288,57 @@ class XtreamRepository @Inject constructor(
         } catch (e: Exception) {
             XtreamResult.Error("Error: ${e.message}")
         }
+    }
+
+    /**
+     * Get series by category
+     */
+    suspend fun getSeriesByCategory(categoryId: String): XtreamResult<List<XtreamSeries>> {
+        val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
+        return try {
+            val url = XtreamUrlBuilder.buildApiUrl(
+                creds.serverUrl, creds.username, creds.password, "get_series"
+            ) + "&category_id=$categoryId"
+            val response = apiService.getSeriesByCategory(url)
+            if (response.isSuccessful) {
+                XtreamResult.Success(response.body() ?: emptyList())
+            } else {
+                XtreamResult.Error("Failed to fetch series", response.code())
+            }
+        } catch (e: Exception) {
+            XtreamResult.Error("Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Get series info with episodes
+     */
+    suspend fun getSeriesInfo(seriesId: Int): XtreamResult<XtreamSeriesInfo> {
+        val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
+        return try {
+            val url = XtreamUrlBuilder.buildApiUrl(
+                creds.serverUrl, creds.username, creds.password, "get_series_info"
+            ) + "&series_id=$seriesId"
+            val response = apiService.getSeriesInfo(url)
+            if (response.isSuccessful) {
+                XtreamResult.Success(response.body() ?: XtreamSeriesInfo())
+            } else {
+                XtreamResult.Error("Failed to fetch series info", response.code())
+            }
+        } catch (e: Exception) {
+            XtreamResult.Error("Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Build episode stream URL
+     */
+    suspend fun buildEpisodeStreamUrl(episodeId: String, extension: String = "mp4"): String? {
+        val creds = getCredentials() ?: return null
+        return XtreamUrlBuilder.buildSeriesStreamUrl(
+            creds.serverUrl, creds.username, creds.password,
+            episodeId.toIntOrNull() ?: 0, extension
+        )
     }
 
     /**

@@ -16,18 +16,27 @@
 
 package com.google.jetstream.presentation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.tv.material3.MaterialTheme
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
+import kotlinx.coroutines.flow.first
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.screens.StreamCategoryBundleKey
 import com.google.jetstream.presentation.screens.StreamIdBundleKey
@@ -39,10 +48,12 @@ import com.google.jetstream.presentation.screens.StreamProgramTitleBundleKey
 import com.google.jetstream.presentation.screens.StreamTypeBundleKey
 import com.google.jetstream.presentation.screens.StreamIconBundleKey
 import com.google.jetstream.presentation.screens.StreamUrlBundleKey
+import com.google.jetstream.presentation.screens.SeriesIdBundleKey
 import com.google.jetstream.presentation.screens.categories.CategoryMovieListScreen
 import com.google.jetstream.presentation.screens.dashboard.DashboardScreen
 import com.google.jetstream.presentation.screens.login.LoginScreen
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
+import com.google.jetstream.presentation.screens.seriesdetail.SeriesDetailScreen
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerScreen
 import com.google.jetstream.presentation.screens.streamPlayer.toRoute
@@ -52,16 +63,51 @@ import java.net.URLDecoder
 @Composable
 fun App(
     onBackPressed: () -> Unit,
-    xtreamRepository: XtreamRepository
+    xtreamRepository: XtreamRepository,
+    onAuthReady: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     var isComingBackFromDifferentScreen by remember { mutableStateOf(false) }
 
-    // Observe login state
-    val isLoggedIn by xtreamRepository.isLoggedIn.collectAsState(initial = false)
+    // Track if we've determined the initial auth state
+    var authStateChecked by remember { mutableStateOf(false) }
+    var initialIsLoggedIn by remember { mutableStateOf(false) }
 
-    // Determine start destination based on login state
-    val startDestination = if (isLoggedIn) Screens.Dashboard() else Screens.Login()
+    // Check auth state once on startup
+    LaunchedEffect(Unit) {
+        initialIsLoggedIn = xtreamRepository.isLoggedIn.first()
+        authStateChecked = true
+        onAuthReady()
+    }
+
+    // Observe ongoing login state changes (for logout handling)
+    val isLoggedIn by xtreamRepository.isLoggedIn.collectAsState(initial = initialIsLoggedIn)
+
+    // Navigate to login when user logs out
+    LaunchedEffect(isLoggedIn, authStateChecked) {
+        if (authStateChecked && !isLoggedIn) {
+            // User logged out, navigate to login
+            navController.navigate(Screens.Login()) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
+    // Show loading while checking auth state
+    if (!authStateChecked) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    // Determine start destination based on initial login state
+    val startDestination = if (initialIsLoggedIn) Screens.Dashboard() else Screens.Login()
 
     NavHost(
         navController = navController,
@@ -143,10 +189,32 @@ fun App(
                     openStreamPlayer = { streamArgs ->
                         navController.navigate(streamArgs.toRoute())
                     },
+                    openSeriesDetail = { seriesId ->
+                        navController.navigate(Screens.SeriesDetail.withArgs(seriesId))
+                    },
                     onBackPressed = onBackPressed,
                     isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
                     resetIsComingBackFromDifferentScreen = {
                         isComingBackFromDifferentScreen = false
+                    }
+                )
+            }
+            composable(
+                route = Screens.SeriesDetail(),
+                arguments = listOf(
+                    navArgument(SeriesIdBundleKey) {
+                        type = NavType.IntType
+                    }
+                )
+            ) {
+                SeriesDetailScreen(
+                    onEpisodeSelected = { streamArgs ->
+                        navController.navigate(streamArgs.toRoute())
+                    },
+                    onBackPressed = {
+                        if (navController.navigateUp()) {
+                            isComingBackFromDifferentScreen = true
+                        }
                     }
                 )
             }

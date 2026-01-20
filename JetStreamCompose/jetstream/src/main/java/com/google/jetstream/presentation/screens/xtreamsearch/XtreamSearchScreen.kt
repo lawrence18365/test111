@@ -178,13 +178,36 @@ fun XtreamSearchScreen(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = when (filter) {
-                                SearchFilter.ALL -> "All (${uiState.totalChannels + uiState.totalVod + uiState.totalSeries})"
-                                SearchFilter.LIVE -> "Live TV (${uiState.totalChannels})"
-                                SearchFilter.MOVIES -> "Movies (${uiState.totalVod})"
-                                SearchFilter.SERIES -> "Series (${uiState.totalSeries})"
+                                SearchFilter.ALL -> "All"
+                                SearchFilter.LIVE -> "Live TV"
+                                SearchFilter.MOVIES -> "Movies"
+                                SearchFilter.SERIES -> "Series"
                             }
                         )
                     }
+                }
+            }
+        }
+
+        // Show error messages if any data failed to load
+        val hasErrors = uiState.channelsError != null || uiState.vodError != null || uiState.seriesError != null
+        if (hasErrors && uiState.query.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Some content failed to load",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFef5350)
+                )
+                androidx.tv.material3.Button(
+                    onClick = { viewModel.retry() }
+                ) {
+                    Text("Retry")
                 }
             }
         }
@@ -202,9 +225,17 @@ fun XtreamSearchScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Searching...",
+                            text = if (uiState.isLoadingData) "Loading content..." else "Searching...",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        if (uiState.isLoadingData) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "First search may take a moment",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 }
             }

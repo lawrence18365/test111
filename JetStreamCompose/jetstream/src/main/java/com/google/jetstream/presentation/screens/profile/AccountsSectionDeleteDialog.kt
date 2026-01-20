@@ -38,7 +38,12 @@ import com.google.jetstream.tvmaterial.StandardDialog
 fun AccountsSectionDeleteDialog(
     showDialog: Boolean,
     onDismissRequest: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.delete_account_dialog_title),
+    text: String = stringResource(R.string.delete_account_dialog_text),
+    confirmText: String = stringResource(R.string.yes_delete_account),
+    dismissText: String = stringResource(R.string.no_keep_it),
+    onConfirm: () -> Unit = onDismissRequest
 ) {
     StandardDialog(
         showDialog = showDialog,
@@ -47,15 +52,15 @@ fun AccountsSectionDeleteDialog(
         confirmButton = {
             AccountsSectionDialogButton(
                 modifier = Modifier.padding(start = 8.dp),
-                text = stringResource(R.string.yes_delete_account),
+                text = confirmText,
                 shouldRequestFocus = true,
-                onClick = onDismissRequest
+                onClick = onConfirm
             )
         },
         dismissButton = {
             AccountsSectionDialogButton(
                 modifier = Modifier.padding(end = 8.dp),
-                text = stringResource(R.string.no_keep_it),
+                text = dismissText,
                 shouldRequestFocus = false,
                 onClick = onDismissRequest
             )
@@ -63,7 +68,7 @@ fun AccountsSectionDeleteDialog(
         title = {
             Text(
                 modifier = Modifier.padding(start = 8.dp),
-                text = stringResource(R.string.delete_account_dialog_title),
+                text = title,
                 color = MaterialTheme.colorScheme.surface,
                 style = MaterialTheme.typography.headlineSmall
             )
@@ -71,7 +76,7 @@ fun AccountsSectionDeleteDialog(
         text = {
             Text(
                 modifier = Modifier.padding(horizontal = 8.dp),
-                text = stringResource(R.string.delete_account_dialog_text),
+                text = text,
                 color = MaterialTheme.colorScheme.surface,
                 style = MaterialTheme.typography.bodyMedium
             )

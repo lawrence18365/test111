@@ -62,6 +62,11 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
+    // Reset state when screen is first displayed (e.g., after logout)
+    LaunchedEffect(Unit) {
+        viewModel.resetState()
+    }
+
     // Navigate on successful login
     LaunchedEffect(uiState) {
         if (uiState is LoginUiState.Success) {

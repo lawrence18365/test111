@@ -109,7 +109,9 @@ class SeriesDetailViewModel @Inject constructor(
                         seriesInfo = result.data,
                         seasons = seasons,
                         selectedSeason = firstSeason,
-                        episodes = episodes.sortedBy { it.episodeNum }
+                        episodes = episodes
+                            .distinctBy { it.id ?: it.episodeNum }
+                            .sortedBy { it.episodeNum }
                     )
                 }
                 is XtreamResult.Error -> {
@@ -129,7 +131,9 @@ class SeriesDetailViewModel @Inject constructor(
             val episodes = info.episodes[seasonNumber.toString()] ?: emptyList()
             _uiState.value = currentState.copy(
                 selectedSeason = seasonNumber,
-                episodes = episodes.sortedBy { it.episodeNum }
+                episodes = episodes
+                    .distinctBy { it.id ?: it.episodeNum }
+                    .sortedBy { it.episodeNum }
             )
         }
     }

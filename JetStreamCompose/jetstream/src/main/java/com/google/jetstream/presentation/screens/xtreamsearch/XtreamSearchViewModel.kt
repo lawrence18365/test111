@@ -18,6 +18,7 @@ package com.google.jetstream.presentation.screens.xtreamsearch
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.models.xtream.XtreamVodItem
@@ -84,6 +85,16 @@ class XtreamSearchViewModel @Inject constructor(
     private var cachedVod: List<XtreamVodItem>? = null
     private var cachedSeries: List<XtreamSeries>? = null
 
+    // Cached categories for category name matching
+    private var cachedLiveCategories: List<XtreamCategory>? = null
+    private var cachedVodCategories: List<XtreamCategory>? = null
+    private var cachedSeriesCategories: List<XtreamCategory>? = null
+
+    // Category ID to name maps for fast lookup
+    private var liveCategoryMap: Map<String, String> = emptyMap()
+    private var vodCategoryMap: Map<String, String> = emptyMap()
+    private var seriesCategoryMap: Map<String, String> = emptyMap()
+
     // Mutex for thread-safe cache access
     private val cacheMutex = Mutex()
 
@@ -128,6 +139,64 @@ class XtreamSearchViewModel @Inject constructor(
         return input.lowercase().replace(Regex("[^a-z0-9]"), "")
     }
 
+    /**
+     * Check if any of the provided fields contain the search query.
+     * Returns true if at least one field matches.
+     */
+    private fun matchesAnyField(queryClean: String, vararg fields: String?): Boolean {
+        return fields.any { field ->
+            field != null && sanitize(field).contains(queryClean)
+        }
+    }
+
+    /**
+     * Check if a channel matches the search query.
+     * Searches: name, EPG channel ID, category name
+     */
+    private fun channelMatchesQuery(channel: XtreamChannel, queryClean: String): Boolean {
+        // Get category name for this channel
+        val categoryName = channel.categoryId?.let { liveCategoryMap[it] }
+        return matchesAnyField(
+            queryClean,
+            channel.name,
+            channel.epgChannelId,
+            categoryName
+        )
+    }
+
+    /**
+     * Check if a VOD item matches the search query.
+     * Searches: name, category name
+     * Note: VOD basic listing doesn't include plot/cast - would require separate API call
+     */
+    private fun vodMatchesQuery(vod: XtreamVodItem, queryClean: String): Boolean {
+        // Get category name for this VOD item
+        val categoryName = vod.categoryId?.let { vodCategoryMap[it] }
+        return matchesAnyField(
+            queryClean,
+            vod.name,
+            categoryName
+        )
+    }
+
+    /**
+     * Check if a series matches the search query.
+     * Searches: name, plot, cast, director, genre, category name
+     */
+    private fun seriesMatchesQuery(series: XtreamSeries, queryClean: String): Boolean {
+        // Get category name for this series
+        val categoryName = series.categoryId?.let { seriesCategoryMap[it] }
+        return matchesAnyField(
+            queryClean,
+            series.name,
+            series.plot,
+            series.cast,
+            series.director,
+            series.genre,
+            categoryName
+        )
+    }
+
     private fun performSearch(query: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, query = query, error = null)
@@ -160,28 +229,26 @@ class XtreamSearchViewModel @Inject constructor(
             val seriesList = mutableListOf<SearchResult.Series>()
 
             cacheMutex.withLock {
-                // Search channels
+                // Search channels (name, EPG channel ID, category name)
                 if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
                     cachedChannels?.asSequence()
-                        ?.filter { sanitize(it.name).contains(queryClean) }
+                        ?.filter { channelMatchesQuery(it, queryClean) }
                         ?.take(50)
                         ?.forEach { liveList.add(SearchResult.Channel(it)) }
                 }
 
-                // Search VOD
+                // Search VOD (name, category name)
                 if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
                     cachedVod?.asSequence()
-                        ?.filter { sanitize(it.name).contains(queryClean) }
+                        ?.filter { vodMatchesQuery(it, queryClean) }
                         ?.take(50)
                         ?.forEach { movieList.add(SearchResult.Vod(it)) }
                 }
 
-                // Search Series
+                // Search Series (name, plot, cast, director, genre, category name)
                 if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
                     cachedSeries?.asSequence()
-                        ?.filter {
-                            sanitize(it.name).contains(queryClean)
-                        }
+                        ?.filter { seriesMatchesQuery(it, queryClean) }
                         ?.take(50)
                         ?.forEach { seriesList.add(SearchResult.Series(it)) }
                 }
@@ -218,6 +285,17 @@ class XtreamSearchViewModel @Inject constructor(
     private suspend fun loadChannelsIfNeeded() {
         if (cachedChannels != null) return
 
+        // Load categories first for category name matching
+        if (cachedLiveCategories == null) {
+            when (val catResult = xtreamRepository.getLiveCategories()) {
+                is XtreamResult.Success -> {
+                    cachedLiveCategories = catResult.data
+                    liveCategoryMap = catResult.data.associate { it.categoryId to it.categoryName }
+                }
+                else -> {} // Continue even if categories fail
+            }
+        }
+
         when (val result = xtreamRepository.getLiveStreams()) {
             is XtreamResult.Success -> {
                 cachedChannels = result.data
@@ -238,6 +316,17 @@ class XtreamSearchViewModel @Inject constructor(
     private suspend fun loadVodIfNeeded() {
         if (cachedVod != null) return
 
+        // Load categories first for category name matching
+        if (cachedVodCategories == null) {
+            when (val catResult = xtreamRepository.getVodCategories()) {
+                is XtreamResult.Success -> {
+                    cachedVodCategories = catResult.data
+                    vodCategoryMap = catResult.data.associate { it.categoryId to it.categoryName }
+                }
+                else -> {} // Continue even if categories fail
+            }
+        }
+
         when (val result = xtreamRepository.getVodStreams()) {
             is XtreamResult.Success -> {
                 cachedVod = result.data
@@ -257,6 +346,17 @@ class XtreamSearchViewModel @Inject constructor(
 
     private suspend fun loadSeriesIfNeeded() {
         if (cachedSeries != null) return
+
+        // Load categories first for category name matching
+        if (cachedSeriesCategories == null) {
+            when (val catResult = xtreamRepository.getSeriesCategories()) {
+                is XtreamResult.Success -> {
+                    cachedSeriesCategories = catResult.data
+                    seriesCategoryMap = catResult.data.associate { it.categoryId to it.categoryName }
+                }
+                else -> {} // Continue even if categories fail
+            }
+        }
 
         when (val result = xtreamRepository.getSeries()) {
             is XtreamResult.Success -> {
@@ -300,9 +400,21 @@ class XtreamSearchViewModel @Inject constructor(
         // Clear cache to force reload
         viewModelScope.launch {
             cacheMutex.withLock {
-                if (_uiState.value.channelsError != null) cachedChannels = null
-                if (_uiState.value.vodError != null) cachedVod = null
-                if (_uiState.value.seriesError != null) cachedSeries = null
+                if (_uiState.value.channelsError != null) {
+                    cachedChannels = null
+                    cachedLiveCategories = null
+                    liveCategoryMap = emptyMap()
+                }
+                if (_uiState.value.vodError != null) {
+                    cachedVod = null
+                    cachedVodCategories = null
+                    vodCategoryMap = emptyMap()
+                }
+                if (_uiState.value.seriesError != null) {
+                    cachedSeries = null
+                    cachedSeriesCategories = null
+                    seriesCategoryMap = emptyMap()
+                }
             }
             _uiState.value = _uiState.value.copy(
                 channelsError = null,

@@ -362,7 +362,10 @@ fun SeriesDetailScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = 24.dp)
                         ) {
-                            items(state.episodes, key = { it.id ?: it.episodeNum }) { episode ->
+                            items(
+                                state.episodes,
+                                key = { it.id ?: "s${state.selectedSeason}_e${it.episodeNum}" }
+                            ) { episode ->
                                 val seriesTitle = info?.name ?: "Series"
                                 EpisodeCard(
                                     episode = episode,

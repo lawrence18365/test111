@@ -17,7 +17,6 @@
 package com.google.jetstream.data.entities
 
 import androidx.room.Entity
-import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -31,14 +30,6 @@ data class EpgChannelEntity(
 
 @Entity(
     tableName = "epg_programs",
-    foreignKeys = [
-        ForeignKey(
-            entity = EpgChannelEntity::class,
-            parentColumns = ["channelId"],
-            childColumns = ["channelId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
     indices = [
         Index(value = ["channelId"]),
         Index(value = ["startTime"]),
@@ -48,7 +39,7 @@ data class EpgChannelEntity(
 data class EpgProgramEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val channelId: String, // FK to EpgChannelEntity
+    val channelId: String,
     val title: String,
     val description: String?,
     val startTime: Long,

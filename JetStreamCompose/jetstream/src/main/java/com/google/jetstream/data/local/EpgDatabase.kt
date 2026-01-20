@@ -23,7 +23,7 @@ import com.google.jetstream.data.entities.EpgProgramEntity
 
 @Database(
     entities = [EpgChannelEntity::class, EpgProgramEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class EpgDatabase : RoomDatabase() {

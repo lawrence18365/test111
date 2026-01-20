@@ -1,0 +1,41 @@
+name: Build APK Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: JetStreamCompose
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :jetstream:assembleDebug
+
+      - name: Stage APK
+        run: |
+          mkdir -p release
+          cp jetstream/build/outputs/apk/debug/jetstream-debug.apk release/iptv.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: JetStreamCompose/release/iptv.apk

@@ -1,0 +1,419 @@
+/*
+ * Xtream Search Screen - Search across all IPTV content
+ */
+package com.google.jetstream.presentation.screens.xtreamsearch
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.LiveTv
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.tv.foundation.lazy.grid.TvGridCells
+import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
+import androidx.tv.foundation.lazy.grid.items
+import androidx.tv.foundation.lazy.list.TvLazyRow
+import androidx.tv.foundation.lazy.list.items
+import androidx.tv.material3.Border
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
+import androidx.tv.material3.CircularProgressIndicator
+import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.FilterChip
+import androidx.tv.material3.Icon
+import androidx.tv.material3.IconButton
+import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Text
+import androidx.tv.material3.TextField
+import coil.compose.AsyncImage
+import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
+import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+fun XtreamSearchScreen(
+    onChannelSelected: (StreamPlayerArgs) -> Unit,
+    onVodSelected: (StreamPlayerArgs) -> Unit,
+    onSeriesSelected: (series: com.google.jetstream.data.models.xtream.XtreamSeries) -> Unit,
+    viewModel: XtreamSearchViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val searchFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        searchFocusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 48.dp, vertical = 24.dp)
+    ) {
+        // Search header
+        Text(
+            text = "Search",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Search input
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextField(
+                value = uiState.query,
+                onValueChange = { viewModel.updateQuery(it) },
+                placeholder = { Text("Search channels, movies, series...") },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                },
+                trailingIcon = {
+                    if (uiState.query.isNotEmpty()) {
+                        IconButton(onClick = { viewModel.clearSearch() }) {
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = "Clear search"
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(searchFocusRequester),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { /* Search triggered by debounce */ })
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Filter chips
+        TvLazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(SearchFilter.entries) { filter ->
+                FilterChip(
+                    selected = uiState.filter == filter,
+                    onClick = { viewModel.setFilter(filter) }
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        when (filter) {
+                            SearchFilter.ALL -> {
+                                Icon(
+                                    Icons.Default.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            SearchFilter.LIVE -> {
+                                Icon(
+                                    Icons.Default.LiveTv,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            SearchFilter.MOVIES -> {
+                                Icon(
+                                    Icons.Default.Movie,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                            SearchFilter.SERIES -> {
+                                Icon(
+                                    Icons.Default.Tv,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = when (filter) {
+                                SearchFilter.ALL -> "All (${uiState.totalChannels + uiState.totalVod + uiState.totalSeries})"
+                                SearchFilter.LIVE -> "Live TV (${uiState.totalChannels})"
+                                SearchFilter.MOVIES -> "Movies (${uiState.totalVod})"
+                                SearchFilter.SERIES -> "Series (${uiState.totalSeries})"
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Results
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Searching...",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+
+            uiState.query.isEmpty() -> {
+                // Show search hints
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Search for channels, movies, or series",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Type at least 2 characters to search",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    }
+                }
+            }
+
+            uiState.results.isEmpty() && uiState.query.length >= 2 -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No results found",
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Try a different search term",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                // Results count
+                Text(
+                    text = "${uiState.results.size} results for \"${uiState.query}\"",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                // Results grid
+                TvLazyVerticalGrid(
+                    columns = TvGridCells.Fixed(5),
+                    contentPadding = PaddingValues(bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.results) { result ->
+                        SearchResultCard(
+                            result = result,
+                            onClick = {
+                                coroutineScope.launch {
+                                    when (result) {
+                                        is SearchResult.Channel -> {
+                                            val url = viewModel.getChannelStreamUrl(result.channel)
+                                            if (url != null) {
+                                                onChannelSelected(
+                                                    StreamPlayerArgs(
+                                                        streamUrl = url,
+                                                        streamName = result.channel.name,
+                                                        streamId = result.channel.streamId,
+                                                        streamType = StreamTypes.LIVE,
+                                                        streamIcon = result.channel.streamIcon,
+                                                        channelNumber = result.channel.num
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        is SearchResult.Vod -> {
+                                            val url = viewModel.getVodStreamUrl(result.vod)
+                                            if (url != null) {
+                                                onVodSelected(
+                                                    StreamPlayerArgs(
+                                                        streamUrl = url,
+                                                        streamName = result.vod.name,
+                                                        streamId = result.vod.streamId,
+                                                        streamType = StreamTypes.VOD,
+                                                        streamIcon = result.vod.streamIcon
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        is SearchResult.Series -> {
+                                            onSeriesSelected(result.series)
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SearchResultCard(
+    result: SearchResult,
+    onClick: () -> Unit
+) {
+    val (name, icon, type, aspectRatio) = when (result) {
+        is SearchResult.Channel -> Triple4(
+            result.channel.name,
+            result.channel.streamIcon,
+            "LIVE",
+            16f / 10f
+        )
+        is SearchResult.Vod -> Triple4(
+            result.vod.name,
+            result.vod.streamIcon,
+            "MOVIE",
+            2f / 3f
+        )
+        is SearchResult.Series -> Triple4(
+            result.series.name,
+            result.series.cover,
+            "SERIES",
+            2f / 3f
+        )
+    }
+
+    val typeColor = when (result) {
+        is SearchResult.Channel -> Color(0xFF00b4d8)
+        is SearchResult.Vod -> Color(0xFFe63946)
+        is SearchResult.Series -> Color(0xFF2a9d8f)
+    }
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspectRatio),
+        colors = CardDefaults.colors(containerColor = Color(0xFF1E1E1E)),
+        border = CardDefaults.border(
+            focusedBorder = Border(border = BorderStroke(2.dp, typeColor))
+        )
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Image
+            if (!icon.isNullOrBlank()) {
+                AsyncImage(
+                    model = icon,
+                    contentDescription = name,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = if (result is SearchResult.Channel) ContentScale.Fit else ContentScale.Crop
+                )
+            }
+
+            // Type badge
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(typeColor)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = type,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Name overlay
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.7f))
+                    .padding(8.dp)
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+    }
+}
+
+private data class Triple4<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

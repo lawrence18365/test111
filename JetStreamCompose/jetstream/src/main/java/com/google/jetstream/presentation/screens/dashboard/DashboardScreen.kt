@@ -61,10 +61,15 @@ import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.screens.categories.CategoriesScreen
 import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
 import com.google.jetstream.presentation.screens.home.HomeScreen
+import com.google.jetstream.presentation.screens.epg.EpgScreen
+import com.google.jetstream.presentation.screens.livechannels.LiveChannelsScreen
 import com.google.jetstream.presentation.screens.movies.MoviesScreen
 import com.google.jetstream.presentation.screens.profile.ProfileScreen
-import com.google.jetstream.presentation.screens.search.SearchScreen
 import com.google.jetstream.presentation.screens.shows.ShowsScreen
+import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
+import com.google.jetstream.presentation.screens.xtreamsearch.XtreamSearchScreen
+import com.google.jetstream.presentation.screens.xtreamseries.XtreamSeriesScreen
+import com.google.jetstream.presentation.screens.xtreamvod.XtreamVodScreen
 import com.google.jetstream.presentation.utils.Padding
 
 val ParentPadding = PaddingValues(vertical = 16.dp, horizontal = 58.dp)
@@ -86,6 +91,7 @@ fun DashboardScreen(
     openCategoryMovieList: (categoryId: String) -> Unit,
     openMovieDetailsScreen: (movieId: String) -> Unit,
     openVideoPlayer: (Movie) -> Unit,
+    openStreamPlayer: (StreamPlayerArgs) -> Unit,
     isComingBackFromDifferentScreen: Boolean,
     resetIsComingBackFromDifferentScreen: () -> Unit,
     onBackPressed: () -> Unit
@@ -193,6 +199,7 @@ fun DashboardScreen(
             openCategoryMovieList = openCategoryMovieList,
             openMovieDetailsScreen = openMovieDetailsScreen,
             openVideoPlayer = openVideoPlayer,
+            openStreamPlayer = openStreamPlayer,
             updateTopBarVisibility = { isTopBarVisible = it },
             isTopBarVisible = isTopBarVisible,
             navController = navController,
@@ -226,6 +233,7 @@ private fun Body(
     openCategoryMovieList: (categoryId: String) -> Unit,
     openMovieDetailsScreen: (movieId: String) -> Unit,
     openVideoPlayer: (Movie) -> Unit,
+    openStreamPlayer: (StreamPlayerArgs) -> Unit,
     updateTopBarVisibility: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
@@ -234,10 +242,20 @@ private fun Body(
     NavHost(
         modifier = modifier,
         navController = navController,
-        startDestination = Screens.Home(),
+        startDestination = Screens.LiveChannels(),
     ) {
         composable(Screens.Profile()) {
             ProfileScreen()
+        }
+        composable(Screens.LiveChannels()) {
+            LiveChannelsScreen(
+                onChannelSelected = openStreamPlayer
+            )
+        }
+        composable(Screens.TvGuide()) {
+            EpgScreen(
+                onChannelSelected = openStreamPlayer
+            )
         }
         composable(Screens.Home()) {
             HomeScreen(
@@ -256,17 +274,17 @@ private fun Body(
             )
         }
         composable(Screens.Movies()) {
-            MoviesScreen(
-                onMovieClick = { movie -> openMovieDetailsScreen(movie.id) },
-                onScroll = updateTopBarVisibility,
-                isTopBarVisible = isTopBarVisible
+            XtreamVodScreen(
+                onVodSelected = openStreamPlayer,
+                onScroll = updateTopBarVisibility
             )
         }
         composable(Screens.Shows()) {
-            ShowsScreen(
-                onTVShowClick = { movie -> openMovieDetailsScreen(movie.id) },
-                onScroll = updateTopBarVisibility,
-                isTopBarVisible = isTopBarVisible
+            XtreamSeriesScreen(
+                onSeriesSelected = { series ->
+                    // For now, just show series info - full episode selection would require more work
+                },
+                onScroll = updateTopBarVisibility
             )
         }
         composable(Screens.Favourites()) {
@@ -277,9 +295,10 @@ private fun Body(
             )
         }
         composable(Screens.Search()) {
-            SearchScreen(
-                onMovieClick = { movie -> openMovieDetailsScreen(movie.id) },
-                onScroll = updateTopBarVisibility
+            XtreamSearchScreen(
+                onChannelSelected = openStreamPlayer,
+                onVodSelected = openStreamPlayer,
+                onSeriesSelected = { },
             )
         }
     }

@@ -15,15 +15,15 @@ https://www.apache.org/licenses/LICENSE-2.0
 -->
 
 <resources>
-    <string name="app_name">JetStream</string>
+    <string name="app_name">Private IPTV</string>
     <string name="generic_error_msg">Couldn\'t get %1s. Reason: %2s</string>
-    <string name="brand_logo_text">JET STREAM</string>
-    <string name="watch_now">Watch Now</string>
+    <string name="brand_logo_text">PRIVATE IPTV</string>
+    <string name="watch_now">Watch live</string>
     <string name="cast_and_crew"><![CDATA[Cast & Crew]]></string>
-    <string name="director">Director</string>
-    <string name="screenplay">Screenplay</string>
-    <string name="music">Music</string>
-    <string name="watch_trailer">Watch trailer</string>
+    <string name="director">Category</string>
+    <string name="screenplay">Language</string>
+    <string name="music">Format</string>
+    <string name="watch_trailer">Watch live</string>
     <string name="status">Status</string>
     <string name="original_language">Original Language</string>
     <string name="budget">Budget</string>
@@ -33,13 +33,13 @@ https://www.apache.org/licenses/LICENSE-2.0
     <string name="delete_account_dialog_text">"By deactivating your account, you will no longer be able to sign in, your activity will be removed from JetStream and your profile preferences will go away.\n\nDo you wish to continue?\n"</string>
     <string name="yes_delete_account">Yes, delete my account</string>
     <string name="no_keep_it">No, keep it</string>
-    <string name="search_screen_et_placeholder">Search for movies, shows and more…</string>
-    <string name="top_10_movies_title">Top 10 in the US</string>
+    <string name="search_screen_et_placeholder">Search channels, groups, and more…</string>
+    <string name="top_10_movies_title">Top Channels</string>
     <string name="profile_screen_listItem_icon_content_description">%s icon</string>
     <string name="language_section_listItem_icon_content_description">%s language option</string>
-    <string name="movie_category_desc">movie category %s</string>
-    <string name="favorites_movies">Movies</string>
-    <string name="favorites_tv_shows">TV Shows</string>
+    <string name="movie_category_desc">channel category %s</string>
+    <string name="favorites_movies">Channels</string>
+    <string name="favorites_tv_shows">On Demand</string>
     <string name="favorites_added_last_week">Added Last Week</string>
     <string name="favorites_available_in_4k">Available in 4K</string>
     <string name="favorites_unknown">Unknown filter</string>

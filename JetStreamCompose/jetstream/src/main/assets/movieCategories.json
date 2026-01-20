@@ -1,42 +1,34 @@
 [
   {
-    "id": "100",
-    "name": "Action"
+    "id": "c1",
+    "name": "News"
   },
   {
-    "id": "101",
-    "name": "Drama"
+    "id": "c2",
+    "name": "Sports"
   },
   {
-    "id": "102",
-    "name": "Comedy"
+    "id": "c3",
+    "name": "Movies"
   },
   {
-    "id": "103",
-    "name": "Horror"
+    "id": "c4",
+    "name": "Kids"
   },
   {
-    "id": "104",
-    "name": "Fantasy"
+    "id": "c5",
+    "name": "Music"
   },
   {
-    "id": "105",
-    "name": "Romance"
-  },
-  {
-    "id": "106",
+    "id": "c6",
     "name": "Documentary"
   },
   {
-    "id": "107",
-    "name": "Animation"
+    "id": "c7",
+    "name": "Lifestyle"
   },
   {
-    "id": "108",
-    "name": "Thriller"
-  },
-  {
-    "id": "109",
-    "name": "Adventure"
+    "id": "c8",
+    "name": "International"
   }
 ]

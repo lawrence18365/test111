@@ -18,6 +18,8 @@ package com.google.jetstream.presentation.screens.profile
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Subtitles
@@ -31,8 +33,10 @@ enum class ProfileScreens(
 ) {
     Accounts(Icons.Default.Person),
     About(Icons.Default.Info),
+    Appearance(title = "Appearance", icon = Icons.Default.Palette),
     Subtitles(Icons.Default.Subtitles),
     Language(Icons.Default.Translate),
+    ParentalControls(title = "Parental Controls", icon = Icons.Default.Lock),
     SearchHistory(title = "Search history", icon = Icons.Default.Search),
     HelpAndSupport(title = "Help and Support", icon = Icons.Default.Support);
 

@@ -18,34 +18,24 @@ package com.google.jetstream.presentation.screens.movies
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.tv.material3.MaterialTheme
-import com.google.jetstream.R
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.util.StringConstants
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
 import com.google.jetstream.presentation.common.MoviesRow
-import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 
 object MovieDetailsScreen {
     const val MovieIdBundleKey = "movieId"
@@ -53,7 +43,7 @@ object MovieDetailsScreen {
 
 @Composable
 fun MovieDetailsScreen(
-    goToMoviePlayer: () -> Unit,
+    goToMoviePlayer: (String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     movieDetailsScreenViewModel: MovieDetailsScreenViewModel = hiltViewModel()
@@ -86,13 +76,11 @@ fun MovieDetailsScreen(
 @Composable
 private fun Details(
     movieDetails: MovieDetails,
-    goToMoviePlayer: () -> Unit,
+    goToMoviePlayer: (String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val childPadding = rememberChildPadding()
-
     BackHandler(onBack = onBackPressed)
     LazyColumn(
         contentPadding = PaddingValues(bottom = 135.dp),
@@ -106,12 +94,6 @@ private fun Details(
         }
 
         item {
-            CastAndCrewList(
-                castAndCrew = movieDetails.castAndCrew
-            )
-        }
-
-        item {
             MoviesRow(
                 title = StringConstants
                     .Composable
@@ -121,58 +103,5 @@ private fun Details(
                 onMovieSelected = refreshScreenWithNewMovie
             )
         }
-
-        item {
-            MovieReviews(
-                modifier = Modifier.padding(top = childPadding.top),
-                reviewsAndRatings = movieDetails.reviewsAndRatings
-            )
-        }
-
-        item {
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = childPadding.start)
-                    .padding(BottomDividerPadding)
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .alpha(0.15f)
-                    .background(MaterialTheme.colorScheme.onSurface)
-            )
-        }
-
-        item {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = childPadding.start),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                val itemModifier = Modifier.width(192.dp)
-
-                TitleValueText(
-                    modifier = itemModifier,
-                    title = stringResource(R.string.status),
-                    value = movieDetails.status
-                )
-                TitleValueText(
-                    modifier = itemModifier,
-                    title = stringResource(R.string.original_language),
-                    value = movieDetails.originalLanguage
-                )
-                TitleValueText(
-                    modifier = itemModifier,
-                    title = stringResource(R.string.budget),
-                    value = movieDetails.budget
-                )
-                TitleValueText(
-                    modifier = itemModifier,
-                    title = stringResource(R.string.revenue),
-                    value = movieDetails.revenue
-                )
-            }
-        }
     }
 }
-
-private val BottomDividerPadding = PaddingValues(vertical = 48.dp)

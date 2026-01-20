@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesomeMotion
 import androidx.compose.material.icons.filled.ClosedCaption
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
@@ -45,9 +44,9 @@ fun VideoPlayerControls(
         mediaTitle = {
             VideoPlayerMediaTitle(
                 title = movieDetails.name,
-                secondaryText = movieDetails.releaseDate,
-                tertiaryText = movieDetails.director,
-                type = VideoPlayerMediaTitleType.DEFAULT
+                secondaryText = movieDetails.categories.joinToString(),
+                tertiaryText = movieDetails.originalLanguage,
+                type = VideoPlayerMediaTitleType.LIVE
             )
         },
         mediaActions = {
@@ -56,25 +55,6 @@ fun VideoPlayerControls(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                PreviousButton(
-                    player = player,
-                    onShowControls = onShowControls
-                )
-                NextButton(
-                    player = player,
-                    onShowControls = onShowControls
-                )
-                RepeatButton(
-                    player = player,
-                    onShowControls = onShowControls,
-                )
-                VideoPlayerControlsIcon(
-                    icon = Icons.Default.AutoAwesomeMotion,
-                    isPlaying = isPlaying,
-                    contentDescription =
-                    StringConstants.Composable.VideoPlayerControlPlaylistButton,
-                    onShowControls = onShowControls
-                )
                 VideoPlayerControlsIcon(
                     icon = Icons.Default.ClosedCaption,
                     isPlaying = isPlaying,

@@ -187,6 +187,9 @@ fun ProfileScreen(
                 composable(ProfileScreens.About()) {
                     AboutSection()
                 }
+                composable(ProfileScreens.Appearance()) {
+                    AppearanceSection()
+                }
                 composable(ProfileScreens.Subtitles()) {
                     SubtitlesSection(
                         isSubtitlesChecked = isSubtitlesChecked,
@@ -198,6 +201,9 @@ fun ProfileScreen(
                         selectedIndex = selectedLanguageIndex,
                         onSelectedIndexChange = { selectedLanguageIndex = it }
                     )
+                }
+                composable(ProfileScreens.ParentalControls()) {
+                    ParentalControlsSection()
                 }
                 composable(ProfileScreens.SearchHistory()) {
                     SearchHistorySection()

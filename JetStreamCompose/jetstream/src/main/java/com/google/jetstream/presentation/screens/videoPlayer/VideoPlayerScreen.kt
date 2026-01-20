@@ -34,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.compose.PlayerSurface
@@ -102,10 +103,7 @@ fun VideoPlayerScreenContent(movieDetails: MovieDetails, onBackPressed: () -> Un
     )
 
     LaunchedEffect(exoPlayer, movieDetails) {
-        exoPlayer.addMediaItem(movieDetails.intoMediaItem())
-        movieDetails.similarMovies.forEach {
-            exoPlayer.addMediaItem(it.intoMediaItem())
-        }
+        exoPlayer.setMediaItem(movieDetails.intoMediaItem())
         exoPlayer.prepare()
     }
 
@@ -178,8 +176,12 @@ private fun Modifier.dPadEvents(
 )
 
 private fun MovieDetails.intoMediaItem(): MediaItem {
+    val metadata = MediaMetadata.Builder()
+        .setTitle(name)
+        .build()
     return MediaItem.Builder()
         .setUri(videoUri)
+        .setMediaMetadata(metadata)
         .setSubtitleConfigurations(
             if (subtitleUri == null) {
                 emptyList()

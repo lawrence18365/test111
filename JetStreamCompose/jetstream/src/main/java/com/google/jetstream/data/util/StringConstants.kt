@@ -48,7 +48,7 @@ object StringConstants {
 
     object Composable {
         object ContentDescription {
-            fun moviePoster(movieName: String) = "Movie poster of $movieName"
+            fun moviePoster(movieName: String) = "Channel poster of $movieName"
             fun image(imageName: String) = "image of $imageName"
             const val MoviesCarousel = "Movies Carousel"
             const val UserAvatar = "User Profile Button"
@@ -61,11 +61,11 @@ object StringConstants {
         const val CategoryDetailsFailureSubject = "category details"
         const val MoviesFailureSubject = "movies"
         const val MovieDetailsFailureSubject = "movie details"
-        const val HomeScreenTrendingTitle = "Trending"
-        const val HomeScreenNowPlayingMoviesTitle = "Now Playing Movies"
-        const val PopularFilmsThisWeekTitle = "Popular films this week"
-        const val BingeWatchDramasTitle = "Bingewatch dramas"
-        fun movieDetailsScreenSimilarTo(name: String) = "Similar to $name"
+        const val HomeScreenTrendingTitle = "Featured Channels"
+        const val HomeScreenNowPlayingMoviesTitle = "Live Now"
+        const val PopularFilmsThisWeekTitle = "Popular Channels"
+        const val BingeWatchDramasTitle = "Kids & Family"
+        fun movieDetailsScreenSimilarTo(name: String) = "More channels like $name"
         fun reviewCount(count: String) = "$count reviews"
 
         object Placeholders {

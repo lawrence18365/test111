@@ -24,7 +24,10 @@ data class Movie(
     val subtitleUri: String?,
     val posterUri: String,
     val name: String,
-    val description: String
+    val description: String,
+    val category: String = "",
+    val language: String = "",
+    val format: String = "",
 )
 
 fun MoviesResponseItem.toMovie(thumbnailType: ThumbnailType = ThumbnailType.Standard): Movie {
@@ -38,7 +41,10 @@ fun MoviesResponseItem.toMovie(thumbnailType: ThumbnailType = ThumbnailType.Stan
         subtitleUri,
         thumbnail,
         title,
-        fullTitle
+        plot,
+        genres,
+        directors,
+        stars
     )
 }
 

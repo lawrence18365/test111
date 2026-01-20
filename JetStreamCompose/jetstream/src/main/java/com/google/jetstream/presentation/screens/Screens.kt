@@ -17,11 +17,26 @@
 package com.google.jetstream.presentation.screens
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.google.jetstream.presentation.screens.categories.CategoryMovieListScreen
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
+
+const val StreamUrlBundleKey = "streamUrl"
+const val StreamNameBundleKey = "streamName"
+const val StreamIdBundleKey = "streamId"
+const val StreamTypeBundleKey = "streamType"
+const val StreamIconBundleKey = "streamIcon"
+const val StreamCategoryBundleKey = "streamCategory"
+const val StreamNumberBundleKey = "streamNumber"
+const val StreamProgramTitleBundleKey = "programTitle"
+const val StreamProgramStartBundleKey = "programStart"
+const val StreamProgramEndBundleKey = "programEnd"
 
 enum class Screens(
     private val args: List<String>? = null,
@@ -29,16 +44,33 @@ enum class Screens(
     val tabIcon: ImageVector? = null
 ) {
     Profile,
-    Home(isTabItem = true),
-    Categories(isTabItem = true),
+    LiveChannels(isTabItem = true, tabIcon = Icons.Default.LiveTv),
+    TvGuide(isTabItem = true, tabIcon = Icons.Default.GridView),
     Movies(isTabItem = true),
     Shows(isTabItem = true),
-    Favourites(isTabItem = true),
+    Favourites(isTabItem = true, tabIcon = Icons.Default.Favorite),
     Search(isTabItem = true, tabIcon = Icons.Default.Search),
+    Home(isTabItem = false), // Keep Home but not as tab
+    Categories(isTabItem = false), // Keep Categories but not as tab
     CategoryMovieList(listOf(CategoryMovieListScreen.CategoryIdBundleKey)),
     MovieDetails(listOf(MovieDetailsScreen.MovieIdBundleKey)),
+    Login,
     Dashboard,
-    VideoPlayer(listOf(VideoPlayerScreen.MovieIdBundleKey));
+    VideoPlayer(listOf(VideoPlayerScreen.MovieIdBundleKey)),
+    StreamPlayer(
+        listOf(
+            StreamUrlBundleKey,
+            StreamNameBundleKey,
+            StreamIdBundleKey,
+            StreamTypeBundleKey,
+            StreamIconBundleKey,
+            StreamCategoryBundleKey,
+            StreamNumberBundleKey,
+            StreamProgramTitleBundleKey,
+            StreamProgramStartBundleKey,
+            StreamProgramEndBundleKey
+        )
+    );
 
     operator fun invoke(): String {
         val argList = StringBuilder()

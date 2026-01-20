@@ -99,6 +99,7 @@ dependencies {
 
     // Media3
     implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.exoplayer.hls)
     implementation(libs.androidx.media3.ui)
 
     // SplashScreen
@@ -108,6 +109,20 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
+
+    // Networking (Xtream Codes API)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.kotlinx.serialization)
+
+    // DataStore for credentials
+    implementation(libs.androidx.datastore)
+
+    // Room Database for favorites, history, etc.
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
     // Baseline profile installer
     implementation(libs.androidx.profileinstaller)

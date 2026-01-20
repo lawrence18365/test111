@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-/*
- * AccountsSection ViewModel for handling logout functionality
- */
 package com.google.jetstream.presentation.screens.profile
 
 import androidx.lifecycle.ViewModel
 import com.google.jetstream.data.models.xtream.XtreamCredentials
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 
 @HiltViewModel
 class AccountsSectionViewModel @Inject constructor(

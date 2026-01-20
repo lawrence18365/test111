@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * IPTV Local Database - Room implementation for favorites, history, and settings
- */
 package com.google.jetstream.data.local
 
 import android.content.Context

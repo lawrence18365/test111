@@ -59,13 +59,11 @@ import androidx.navigation.compose.rememberNavController
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.presentation.screens.Screens
 import com.google.jetstream.presentation.screens.categories.CategoriesScreen
+import com.google.jetstream.presentation.screens.epg.EpgScreen
 import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
 import com.google.jetstream.presentation.screens.home.HomeScreen
-import com.google.jetstream.presentation.screens.epg.EpgScreen
 import com.google.jetstream.presentation.screens.livechannels.LiveChannelsScreen
-import com.google.jetstream.presentation.screens.movies.MoviesScreen
 import com.google.jetstream.presentation.screens.profile.ProfileScreen
-import com.google.jetstream.presentation.screens.shows.ShowsScreen
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.xtreamsearch.XtreamSearchScreen
 import com.google.jetstream.presentation.screens.xtreamseries.XtreamSeriesScreen

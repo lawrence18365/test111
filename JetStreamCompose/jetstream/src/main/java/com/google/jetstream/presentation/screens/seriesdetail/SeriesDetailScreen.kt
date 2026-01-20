@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Series Detail Screen - Shows series info, seasons, and episodes
- */
 package com.google.jetstream.presentation.screens.seriesdetail
 
 import androidx.compose.foundation.BorderStroke
@@ -63,7 +60,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamEpisode
-import com.google.jetstream.data.models.xtream.XtreamSeason
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
 import kotlinx.coroutines.launch
@@ -270,20 +266,27 @@ fun SeriesDetailScreen(
                             contentPadding = PaddingValues(bottom = 24.dp)
                         ) {
                             items(state.episodes, key = { it.id ?: it.episodeNum }) { episode ->
+                                val seriesTitle = info?.name ?: "Series"
                                 EpisodeCard(
                                     episode = episode,
-                                    seriesName = info?.name ?: "Series",
+                                    seriesName = seriesTitle,
                                     seasonNumber = state.selectedSeason,
                                     onClick = {
                                         coroutineScope.launch {
                                             val url = viewModel.getEpisodeStreamUrl(episode)
                                             if (url != null) {
+                                                val defaultEpisodeName = buildString {
+                                                    append("S")
+                                                    append(state.selectedSeason)
+                                                    append("E")
+                                                    append(episode.episodeNum)
+                                                }
                                                 val episodeName = episode.title
-                                                    ?: "S${state.selectedSeason}E${episode.episodeNum}"
+                                                    ?: defaultEpisodeName
                                                 onEpisodeSelected(
                                                     StreamPlayerArgs(
                                                         streamUrl = url,
-                                                        streamName = "${info?.name ?: "Series"} - $episodeName",
+                                                        streamName = "$seriesTitle - $episodeName",
                                                         streamId = episode.id?.toIntOrNull() ?: 0,
                                                         streamType = StreamTypes.SERIES,
                                                         streamIcon = episode.info?.movieImage

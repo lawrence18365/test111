@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Favorites Repository - Manages user's favorite channels
- */
 package com.google.jetstream.data.repositories
 
 import com.google.jetstream.data.local.FavoriteChannel
@@ -28,9 +25,9 @@ import com.google.jetstream.data.local.WatchHistoryDao
 import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.models.xtream.XtreamVodItem
-import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.flow.Flow
 
 @Singleton
 class FavoritesRepository @Inject constructor(
@@ -42,9 +39,12 @@ class FavoritesRepository @Inject constructor(
 
     val allFavorites: Flow<List<FavoriteChannel>> = favoriteChannelDao.getAllFavorites()
 
-    val liveFavorites: Flow<List<FavoriteChannel>> = favoriteChannelDao.getFavoritesByType("live")
-    val vodFavorites: Flow<List<FavoriteChannel>> = favoriteChannelDao.getFavoritesByType("vod")
-    val seriesFavorites: Flow<List<FavoriteChannel>> = favoriteChannelDao.getFavoritesByType("series")
+    val liveFavorites: Flow<List<FavoriteChannel>> =
+        favoriteChannelDao.getFavoritesByType("live")
+    val vodFavorites: Flow<List<FavoriteChannel>> =
+        favoriteChannelDao.getFavoritesByType("vod")
+    val seriesFavorites: Flow<List<FavoriteChannel>> =
+        favoriteChannelDao.getFavoritesByType("series")
 
     val favoritesCount: Flow<Int> = favoriteChannelDao.getFavoritesCount()
 

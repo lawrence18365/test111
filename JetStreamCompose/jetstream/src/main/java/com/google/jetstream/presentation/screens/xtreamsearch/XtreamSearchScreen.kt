@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Search Screen - Search across all IPTV content
- */
 package com.google.jetstream.presentation.screens.xtreamsearch
 
 import androidx.compose.foundation.BorderStroke
@@ -34,7 +31,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -44,6 +40,8 @@ import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -77,8 +75,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.TextField
 import coil.compose.AsyncImage
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
@@ -206,7 +202,9 @@ fun XtreamSearchScreen(
         }
 
         // Show error messages if any data failed to load
-        val hasErrors = uiState.channelsError != null || uiState.vodError != null || uiState.seriesError != null
+        val hasErrors = uiState.channelsError != null ||
+            uiState.vodError != null ||
+            uiState.seriesError != null
         if (hasErrors && uiState.query.isNotEmpty()) {
             Row(
                 modifier = Modifier
@@ -240,8 +238,13 @@ fun XtreamSearchScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
+                        val loadingText = if (uiState.isLoadingData) {
+                            "Loading content..."
+                        } else {
+                            "Searching..."
+                        }
                         Text(
-                            text = if (uiState.isLoadingData) "Loading content..." else "Searching...",
+                            text = loadingText,
                             style = MaterialTheme.typography.bodyMedium
                         )
                         if (uiState.isLoadingData) {
@@ -416,11 +419,16 @@ private fun SearchResultCard(
         Box(modifier = Modifier.fillMaxSize()) {
             // Image
             if (!icon.isNullOrBlank()) {
+                val imageScale = if (result is SearchResult.Channel) {
+                    ContentScale.Fit
+                } else {
+                    ContentScale.Crop
+                }
                 AsyncImage(
                     model = icon,
                     contentDescription = name,
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = if (result is SearchResult.Channel) ContentScale.Fit else ContentScale.Crop
+                    contentScale = imageScale
                 )
             }
 

@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Search Screen ViewModel - Search across all content types
- * Fixed: Load data on-demand when user searches, with proper error handling
- */
 package com.google.jetstream.presentation.screens.xtreamsearch
 
 import androidx.lifecycle.ViewModel
@@ -28,6 +24,7 @@ import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +36,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import javax.inject.Inject
 
 sealed class SearchResult {
     data class Channel(val channel: XtreamChannel) : SearchResult()
@@ -127,7 +123,10 @@ class XtreamSearchViewModel @Inject constructor(
 
             // Load required data based on filter (on-demand)
             val dataLoadNeeded = when (filter) {
-                SearchFilter.ALL -> cachedChannels == null || cachedVod == null || cachedSeries == null
+                SearchFilter.ALL ->
+                    cachedChannels == null ||
+                        cachedVod == null ||
+                        cachedSeries == null
                 SearchFilter.LIVE -> cachedChannels == null
                 SearchFilter.MOVIES -> cachedVod == null
                 SearchFilter.SERIES -> cachedSeries == null
@@ -165,7 +164,7 @@ class XtreamSearchViewModel @Inject constructor(
                     cachedSeries?.asSequence()
                         ?.filter {
                             it.name.lowercase().contains(queryLower) ||
-                            it.genre?.lowercase()?.contains(queryLower) == true
+                                it.genre?.lowercase()?.contains(queryLower) == true
                         }
                         ?.take(50)
                         ?.forEach { results.add(SearchResult.Series(it)) }

@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Series (TV Shows) Screen - Displays series from Xtream Codes
- * Fixed: Load by category to prevent OOM crash
- */
 package com.google.jetstream.presentation.screens.xtreamseries
 
 import androidx.activity.compose.BackHandler
@@ -35,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -53,7 +50,6 @@ import androidx.tv.foundation.lazy.grid.items
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text

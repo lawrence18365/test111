@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Series (TV Shows) Screen ViewModel
- * Fixed: Load series by category to prevent OOM crash from loading all at once
- */
 package com.google.jetstream.presentation.screens.xtreamseries
 
 import androidx.lifecycle.ViewModel
@@ -27,11 +23,11 @@ import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface XtreamSeriesUiState {
     data object Loading : XtreamSeriesUiState

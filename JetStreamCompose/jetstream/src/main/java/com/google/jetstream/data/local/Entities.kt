@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Room Database Entities for IPTV app
- */
 package com.google.jetstream.data.local
 
 import androidx.room.Entity

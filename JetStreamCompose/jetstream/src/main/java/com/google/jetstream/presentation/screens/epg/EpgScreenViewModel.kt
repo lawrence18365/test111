@@ -14,28 +14,21 @@
  * limitations under the License.
  */
 
-/*
- * EPG (Electronic Program Guide) Screen ViewModel
- */
 package com.google.jetstream.presentation.screens.epg
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
-import com.google.jetstream.data.models.xtream.XtreamEpgListing
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.Calendar
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-import javax.inject.Inject
 
 data class EpgChannelWithPrograms(
     val channel: XtreamChannel,
@@ -98,7 +91,8 @@ class EpgScreenViewModel @Inject constructor(
             val channelsResult = xtreamRepository.getLiveStreams()
 
             when {
-                categoriesResult is XtreamResult.Success && channelsResult is XtreamResult.Success -> {
+                categoriesResult is XtreamResult.Success &&
+                    channelsResult is XtreamResult.Success -> {
                     categories = categoriesResult.data
                     allChannels = channelsResult.data
 

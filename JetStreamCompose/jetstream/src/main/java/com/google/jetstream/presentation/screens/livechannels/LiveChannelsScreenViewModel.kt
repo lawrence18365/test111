@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Live Channels Screen ViewModel
- */
 package com.google.jetstream.presentation.screens.livechannels
 
 import androidx.lifecycle.ViewModel
@@ -28,12 +25,12 @@ import com.google.jetstream.data.repositories.FavoritesRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface LiveChannelsUiState {
     data object Loading : LiveChannelsUiState
@@ -71,7 +68,8 @@ class LiveChannelsScreenViewModel @Inject constructor(
             val channelsResult = xtreamRepository.getLiveStreams()
 
             when {
-                categoriesResult is XtreamResult.Success && channelsResult is XtreamResult.Success -> {
+                categoriesResult is XtreamResult.Success &&
+                    channelsResult is XtreamResult.Success -> {
                     categories = categoriesResult.data
                     allChannels = channelsResult.data
                     _uiState.value = LiveChannelsUiState.Ready(

@@ -16,13 +16,7 @@
 
 package com.google.jetstream.presentation.screens
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LiveTv
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.ui.graphics.vector.ImageVector
+import com.google.jetstream.R
 import com.google.jetstream.presentation.screens.categories.CategoryMovieListScreen
 import com.google.jetstream.presentation.screens.movies.MovieDetailsScreen
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
@@ -42,15 +36,15 @@ const val SeriesIdBundleKey = "seriesId"
 enum class Screens(
     private val args: List<String>? = null,
     val isTabItem: Boolean = false,
-    val tabIcon: ImageVector? = null
+    val tabIcon: Int? = null
 ) {
     Profile,
-    LiveChannels(isTabItem = true, tabIcon = Icons.Default.LiveTv),
-    TvGuide(isTabItem = true, tabIcon = Icons.Default.GridView),
-    Movies(isTabItem = true),
-    Shows(isTabItem = true),
-    Favourites(isTabItem = true, tabIcon = Icons.Default.Favorite),
-    Search(isTabItem = true, tabIcon = Icons.Default.Search),
+    LiveChannels(isTabItem = true, tabIcon = R.drawable.ic_fa_tv),
+    TvGuide(isTabItem = true, tabIcon = R.drawable.ic_fa_list),
+    Movies(isTabItem = true, tabIcon = R.drawable.ic_fa_film),
+    Shows(isTabItem = true, tabIcon = R.drawable.ic_fa_video),
+    Favourites(isTabItem = true, tabIcon = R.drawable.ic_fa_heart),
+    Search(isTabItem = true, tabIcon = R.drawable.ic_fa_search),
     Home(isTabItem = false), // Keep Home but not as tab
     Categories(isTabItem = false), // Keep Categories but not as tab
     CategoryMovieList(listOf(CategoryMovieListScreen.CategoryIdBundleKey)),

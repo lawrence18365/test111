@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Live Channels Screen - Displays live TV channels from Xtream Codes
- */
 package com.google.jetstream.presentation.screens.livechannels
 
 import androidx.compose.animation.AnimatedVisibility
@@ -38,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -53,23 +51,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.grid.TvGridCells
-import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
 import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
+import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.google.jetstream.data.local.WatchHistory
 import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
-import com.google.jetstream.data.local.WatchHistory
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
 import kotlinx.coroutines.launch
@@ -181,7 +178,9 @@ fun LiveChannelsScreen(
                                         history = history,
                                         onClick = {
                                             coroutineScope.launch {
-                                                val streamUrl = viewModel.getStreamUrl(history.streamId)
+                                                val streamUrl = viewModel.getStreamUrl(
+                                                    history.streamId
+                                                )
                                                 if (streamUrl != null) {
                                                     onChannelSelected(
                                                         StreamPlayerArgs(

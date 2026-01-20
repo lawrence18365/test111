@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Codes Repository
- */
 package com.google.jetstream.data.repositories.xtream
 
 import android.content.Context
@@ -35,15 +32,17 @@ import com.google.jetstream.data.models.xtream.XtreamUrlBuilder
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.network.XtreamApiService
 import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import javax.inject.Inject
-import javax.inject.Singleton
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "xtream_credentials")
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = "xtream_credentials"
+)
 
 sealed class XtreamResult<out T> {
     data class Success<T>(val data: T) : XtreamResult<T>()

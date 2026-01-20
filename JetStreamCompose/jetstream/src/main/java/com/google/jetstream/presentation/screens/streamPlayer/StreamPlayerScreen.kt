@@ -14,10 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Stream Player Screen - Premium IPTV playback experience
- * Features: Channel info overlay, favorites toggle, EPG info, quality settings
- */
 package com.google.jetstream.presentation.screens.streamPlayer
 
 import android.app.Activity
@@ -71,11 +67,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -90,19 +87,14 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.BACK
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.FORWARD
-import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -278,19 +270,21 @@ fun StreamPlayerScreen(
     BackHandler(onBack = onBackPressed)
 
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 4)
-    val pulseState = rememberVideoPlayerPulseState()
+    val pulseState =
+        com.google.jetstream.presentation.screens.videoPlayer.components
+            .rememberVideoPlayerPulseState()
 
     val dpadModifier = Modifier.handleDPadKeyEvents(
         onLeft = {
             if (!showChannelInfo) {
                 exoPlayer.seekBack()
-                pulseState.setType(BACK)
+                pulseState.setType(VideoPlayerPulse.Type.BACK)
             }
         },
         onRight = {
             if (!showChannelInfo) {
                 exoPlayer.seekForward()
-                pulseState.setType(FORWARD)
+                pulseState.setType(VideoPlayerPulse.Type.FORWARD)
             }
         },
         onUp = {
@@ -627,8 +621,10 @@ private fun ChannelInfoOverlay(
                     )
                     if (programStart != null && programEnd != null) {
                         Spacer(modifier = Modifier.height(2.dp))
+                        val startTimeText = timeFormat.format(Date(programStart))
+                        val endTimeText = timeFormat.format(Date(programEnd))
                         Text(
-                            text = "${timeFormat.format(Date(programStart))} - ${timeFormat.format(Date(programEnd))}",
+                            text = "$startTimeText - $endTimeText",
                             style = MaterialTheme.typography.labelSmall,
                             color = Color.White.copy(alpha = 0.6f)
                         )
@@ -704,10 +700,15 @@ private fun ChannelInfoOverlay(
                         )
                     }
                 }
+                val favoriteDescription = if (isFavorite) {
+                    "Remove from favorites"
+                } else {
+                    "Add to favorites"
+                }
                 IconButton(onClick = onToggleFavorite) {
                     Icon(
                         if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                        contentDescription = favoriteDescription,
                         tint = if (isFavorite) Color.Red else Color.White
                     )
                 }

@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -136,7 +137,7 @@ fun DashboardTopBar(
                             ) {
                                 if (screen.tabIcon != null) {
                                     Icon(
-                                        screen.tabIcon,
+                                        painter = painterResource(id = screen.tabIcon),
                                         modifier = Modifier.padding(4.dp),
                                         contentDescription = StringConstants.Composable
                                             .ContentDescription.DashboardSearchButton,

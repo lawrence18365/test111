@@ -19,6 +19,7 @@ package com.google.jetstream.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -36,9 +36,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.tv.material3.MaterialTheme
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
-import kotlinx.coroutines.flow.first
 import com.google.jetstream.presentation.screens.Screens
+import com.google.jetstream.presentation.screens.SeriesIdBundleKey
 import com.google.jetstream.presentation.screens.StreamCategoryBundleKey
+import com.google.jetstream.presentation.screens.StreamIconBundleKey
 import com.google.jetstream.presentation.screens.StreamIdBundleKey
 import com.google.jetstream.presentation.screens.StreamNameBundleKey
 import com.google.jetstream.presentation.screens.StreamNumberBundleKey
@@ -46,9 +47,7 @@ import com.google.jetstream.presentation.screens.StreamProgramEndBundleKey
 import com.google.jetstream.presentation.screens.StreamProgramStartBundleKey
 import com.google.jetstream.presentation.screens.StreamProgramTitleBundleKey
 import com.google.jetstream.presentation.screens.StreamTypeBundleKey
-import com.google.jetstream.presentation.screens.StreamIconBundleKey
 import com.google.jetstream.presentation.screens.StreamUrlBundleKey
-import com.google.jetstream.presentation.screens.SeriesIdBundleKey
 import com.google.jetstream.presentation.screens.categories.CategoryMovieListScreen
 import com.google.jetstream.presentation.screens.dashboard.DashboardScreen
 import com.google.jetstream.presentation.screens.login.LoginScreen
@@ -59,6 +58,7 @@ import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerScreen
 import com.google.jetstream.presentation.screens.streamPlayer.toRoute
 import com.google.jetstream.presentation.screens.videoPlayer.VideoPlayerScreen
 import java.net.URLDecoder
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun App(
@@ -277,8 +277,10 @@ fun App(
                     backStackEntry.arguments?.getString(StreamProgramTitleBundleKey).orEmpty(),
                     "UTF-8"
                 ).ifBlank { null }
-                val programStart = backStackEntry.arguments?.getLong(StreamProgramStartBundleKey) ?: 0L
-                val programEnd = backStackEntry.arguments?.getLong(StreamProgramEndBundleKey) ?: 0L
+                val programStart = backStackEntry.arguments
+                    ?.getLong(StreamProgramStartBundleKey) ?: 0L
+                val programEnd = backStackEntry.arguments
+                    ?.getLong(StreamProgramEndBundleKey) ?: 0L
                 StreamPlayerScreen(
                     streamArgs = StreamPlayerArgs(
                         streamUrl = streamUrl,

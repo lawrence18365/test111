@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Series Detail Screen ViewModel - Shows series info and episodes
- */
 package com.google.jetstream.presentation.screens.seriesdetail
 
 import androidx.lifecycle.SavedStateHandle
@@ -28,11 +25,11 @@ import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface SeriesDetailUiState {
     data object Loading : SeriesDetailUiState

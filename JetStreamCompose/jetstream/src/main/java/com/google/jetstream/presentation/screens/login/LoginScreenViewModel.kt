@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Login Screen ViewModel
- */
 package com.google.jetstream.presentation.screens.login
 
 import androidx.lifecycle.ViewModel
@@ -24,11 +21,11 @@ import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 sealed interface LoginUiState {
     data object Idle : LoginUiState

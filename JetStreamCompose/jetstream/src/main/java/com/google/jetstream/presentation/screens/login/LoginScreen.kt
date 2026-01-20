@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Login Screen for Xtream Codes Authentication
- */
 package com.google.jetstream.presentation.screens.login
 
 import androidx.compose.foundation.background
@@ -31,6 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,9 +59,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -225,7 +222,11 @@ fun LoginScreen(
                 ),
                 keyboardActions = KeyboardActions(
                     onDone = {
-                        if (serverUrl.isNotBlank() && username.isNotBlank() && password.isNotBlank()) {
+                        if (
+                            serverUrl.isNotBlank() &&
+                            username.isNotBlank() &&
+                            password.isNotBlank()
+                        ) {
                             viewModel.login(serverUrl, username, password)
                         }
                     }
@@ -252,9 +253,9 @@ fun LoginScreen(
                     viewModel.login(serverUrl, username, password)
                 },
                 enabled = serverUrl.isNotBlank() &&
-                        username.isNotBlank() &&
-                        password.isNotBlank() &&
-                        uiState !is LoginUiState.Loading,
+                    username.isNotBlank() &&
+                    password.isNotBlank() &&
+                    uiState !is LoginUiState.Loading,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xFF00b4d8),
@@ -285,7 +286,8 @@ fun LoginScreen(
 
             // Help text
             Text(
-                text = "Enter your IPTV provider credentials.\nContact your provider if you don't have login details.",
+                text = "Enter your IPTV provider credentials.\n" +
+                    "Contact your provider if you don't have login details.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center

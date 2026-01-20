@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Codes API Service
- */
 package com.google.jetstream.data.network
 
 import com.google.jetstream.data.models.xtream.XtreamAuthResponse
@@ -28,7 +25,6 @@ import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import retrofit2.Response
 import retrofit2.http.GET
-import retrofit2.http.Query
 import retrofit2.http.Url
 
 /**

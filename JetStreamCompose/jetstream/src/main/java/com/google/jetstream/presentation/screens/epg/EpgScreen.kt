@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * EPG (Electronic Program Guide) Screen - TV Guide style interface
- */
 package com.google.jetstream.presentation.screens.epg
 
 import androidx.compose.foundation.BorderStroke
@@ -40,6 +37,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -68,19 +67,17 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
-import androidx.tv.material3.surfaceColorAtElevation
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private val EpgAccentColor = Color(0xFF00b4d8)
 private val EpgCardShape = RoundedCornerShape(10.dp)
@@ -168,25 +165,27 @@ fun EpgScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(state.channels, key = { it.channel.streamId }) { channelWithPrograms ->
+                        val channel = channelWithPrograms.channel
+                        val categoryId = channel.categoryId
                         EpgChannelRow(
                             channelWithPrograms = channelWithPrograms,
                             currentTimeSlot = state.currentTimeSlot,
                             onChannelClick = {
                                 coroutineScope.launch {
-                                    val streamUrl = viewModel.getStreamUrl(channelWithPrograms.channel)
+                                    val streamUrl = viewModel.getStreamUrl(channel)
                                     if (streamUrl != null) {
                                         val categoryName = state.categories
-                                            .firstOrNull { it.categoryId == channelWithPrograms.channel.categoryId }
+                                            .firstOrNull { it.categoryId == categoryId }
                                             ?.categoryName
                                         onChannelSelected(
                                             StreamPlayerArgs(
                                                 streamUrl = streamUrl,
-                                                streamName = channelWithPrograms.channel.name,
-                                                streamId = channelWithPrograms.channel.streamId,
+                                                streamName = channel.name,
+                                                streamId = channel.streamId,
                                                 streamType = StreamTypes.LIVE,
-                                                streamIcon = channelWithPrograms.channel.streamIcon,
+                                                streamIcon = channel.streamIcon,
                                                 categoryName = categoryName,
-                                                channelNumber = channelWithPrograms.channel.num
+                                                channelNumber = channel.num
                                             )
                                         )
                                     }
@@ -195,20 +194,20 @@ fun EpgScreen(
                             onProgramClick = { program ->
                                 coroutineScope.launch {
                                     val categoryName = state.categories
-                                        .firstOrNull { it.categoryId == channelWithPrograms.channel.categoryId }
+                                        .firstOrNull { it.categoryId == categoryId }
                                         ?.categoryName
                                     if (program.isLive) {
-                                        val streamUrl = viewModel.getStreamUrl(channelWithPrograms.channel)
+                                        val streamUrl = viewModel.getStreamUrl(channel)
                                         if (streamUrl != null) {
                                             onChannelSelected(
                                                 StreamPlayerArgs(
                                                     streamUrl = streamUrl,
-                                                    streamName = channelWithPrograms.channel.name,
-                                                    streamId = channelWithPrograms.channel.streamId,
+                                                    streamName = channel.name,
+                                                    streamId = channel.streamId,
                                                     streamType = StreamTypes.LIVE,
-                                                    streamIcon = channelWithPrograms.channel.streamIcon,
+                                                    streamIcon = channel.streamIcon,
                                                     categoryName = categoryName,
-                                                    channelNumber = channelWithPrograms.channel.num,
+                                                    channelNumber = channel.num,
                                                     programTitle = program.title,
                                                     programStart = program.startTime,
                                                     programEnd = program.endTime
@@ -224,12 +223,12 @@ fun EpgScreen(
                                             onChannelSelected(
                                                 StreamPlayerArgs(
                                                     streamUrl = streamUrl,
-                                                    streamName = channelWithPrograms.channel.name,
-                                                    streamId = channelWithPrograms.channel.streamId,
+                                                    streamName = channel.name,
+                                                    streamId = channel.streamId,
                                                     streamType = StreamTypes.CATCHUP,
-                                                    streamIcon = channelWithPrograms.channel.streamIcon,
+                                                    streamIcon = channel.streamIcon,
                                                     categoryName = categoryName,
-                                                    channelNumber = channelWithPrograms.channel.num,
+                                                    channelNumber = channel.num,
                                                     programTitle = program.title,
                                                     programStart = program.startTime,
                                                     programEnd = program.endTime

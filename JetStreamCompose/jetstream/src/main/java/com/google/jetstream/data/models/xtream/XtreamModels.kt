@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-/*
- * Xtream Codes API Data Models
- */
 package com.google.jetstream.data.models.xtream
 
 import java.text.SimpleDateFormat

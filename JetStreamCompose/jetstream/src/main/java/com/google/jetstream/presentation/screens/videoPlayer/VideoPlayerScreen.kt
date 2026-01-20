@@ -44,16 +44,7 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.presentation.common.Error
 import com.google.jetstream.presentation.common.Loading
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerControls
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerOverlay
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.BACK
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse.Type.FORWARD
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulseState
-import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerState
-import com.google.jetstream.presentation.screens.videoPlayer.components.rememberPlayer
-import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerPulseState
-import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
+import com.google.jetstream.presentation.screens.videoPlayer.components.*
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
 
 object VideoPlayerScreen {
@@ -158,13 +149,13 @@ private fun Modifier.dPadEvents(
     onLeft = {
         if (!videoPlayerState.isControlsVisible) {
             exoPlayer.seekBack()
-            pulseState.setType(BACK)
+            pulseState.setType(VideoPlayerPulse.Type.BACK)
         }
     },
     onRight = {
         if (!videoPlayerState.isControlsVisible) {
             exoPlayer.seekForward()
-            pulseState.setType(FORWARD)
+            pulseState.setType(VideoPlayerPulse.Type.FORWARD)
         }
     },
     onUp = { videoPlayerState.showControls() },

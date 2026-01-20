@@ -125,8 +125,10 @@ class LiveChannelsScreenViewModel @Inject constructor(
             return emptyList()
         }
         return allChannels.filter { channel ->
-            val matchesPrimary = channel.categoryId?.let { categoryIds.contains(it) } == true
-            val matchesAny = channel.categoryIds?.any { categoryIds.contains(it.toString()) } == true
+            val matchesPrimary = channel.categoryId
+                ?.let { categoryIds.contains(it) } == true
+            val matchesAny = channel.categoryIds
+                ?.any { categoryIds.contains(it.toString()) } == true
             matchesPrimary || matchesAny
         }
     }

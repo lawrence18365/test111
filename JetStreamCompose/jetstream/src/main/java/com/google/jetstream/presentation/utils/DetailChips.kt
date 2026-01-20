@@ -83,7 +83,11 @@ fun QualityBadgesRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         badges.forEach { badge ->
-            BadgeChip(label = badge.label, background = badge.background, textColor = badge.textColor)
+            BadgeChip(
+                label = badge.label,
+                background = badge.background,
+                textColor = badge.textColor
+            )
         }
     }
 }

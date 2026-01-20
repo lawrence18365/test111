@@ -16,11 +16,19 @@ class EpgRepository @Inject constructor(
     private val epgDao: EpgDao,
     private val workManager: WorkManager
 ) {
-    suspend fun getProgramsForChannel(channelId: String, startTime: Long, endTime: Long): List<EpgProgramEntity> {
+    suspend fun getProgramsForChannel(
+        channelId: String,
+        startTime: Long,
+        endTime: Long
+    ): List<EpgProgramEntity> {
         return epgDao.getProgramsForChannel(channelId, startTime, endTime)
     }
 
-    suspend fun getProgramsForChannels(channelIds: List<String>, startTime: Long, endTime: Long): List<EpgProgramEntity> {
+    suspend fun getProgramsForChannels(
+        channelIds: List<String>,
+        startTime: Long,
+        endTime: Long
+    ): List<EpgProgramEntity> {
         return epgDao.getProgramsForChannels(channelIds, startTime, endTime)
     }
 

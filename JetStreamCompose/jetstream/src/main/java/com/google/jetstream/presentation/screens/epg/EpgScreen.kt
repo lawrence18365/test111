@@ -212,7 +212,10 @@ fun EpgScreen(
                         contentPadding = PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.channels, key = { it.channel.streamId }) { channelWithPrograms ->
+                        items(
+                            state.channels,
+                            key = { it.channel.streamId }
+                        ) { channelWithPrograms ->
                             val channel = channelWithPrograms.channel
                             val categoryId = channel.categoryId
                             EpgChannelRow(

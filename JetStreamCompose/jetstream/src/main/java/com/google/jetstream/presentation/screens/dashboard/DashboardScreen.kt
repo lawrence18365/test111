@@ -108,7 +108,8 @@ fun DashboardScreen(
     val currentTopBarSelectedTabIndex by remember(currentDestination) {
         derivedStateOf {
             val route = currentDestination?.substringBefore("/") ?: return@derivedStateOf 0
-            val screen = Screens.values().firstOrNull { it.name == route } ?: return@derivedStateOf 0
+            val screen = Screens.values().firstOrNull { it.name == route }
+                ?: return@derivedStateOf 0
             TopBarTabs.indexOf(screen).takeIf { it >= 0 } ?: 0
         }
     }

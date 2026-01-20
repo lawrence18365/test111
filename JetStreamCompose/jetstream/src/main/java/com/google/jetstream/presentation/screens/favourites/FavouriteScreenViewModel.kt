@@ -67,7 +67,9 @@ class FavouriteScreenViewModel @Inject constructor(
                 // Check if movie matches ANY of the active filters
                 activeFilters.any { filter ->
                     when (filter) {
-                        FilterCondition.Movies -> movie.category == "movie" || movie.category == "vod"
+                        FilterCondition.Movies -> {
+                            movie.category == "movie" || movie.category == "vod"
+                        }
                         FilterCondition.TvShows -> movie.category == "series"
                         FilterCondition.LiveTv -> movie.category == "live"
                         else -> true

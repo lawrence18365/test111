@@ -108,7 +108,7 @@ object StringConstants {
             const val AccountsSelectionSwitchAccountsEmail = "jack@jetstream.com"
             const val AccountsSelectionLogOut = "Log out"
             const val AccountsSelectionChangePasswordTitle = "Change password"
-            const val AccountsSelectionChangePasswordValue = "••••••••••••••"
+            const val AccountsSelectionChangePasswordValue = "••••••••"
             const val AccountsSelectionAddNewAccountTitle = "Add new account"
             const val AccountsSelectionViewSubscriptionsTitle = "View subscriptions"
             const val AccountsSelectionDeleteAccountTitle = "Delete account"

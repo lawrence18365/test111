@@ -23,7 +23,11 @@ data class EpgChannelEntity(
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["channelId"]), Index(value = ["startTime"]), Index(value = ["endTime"])]
+    indices = [
+        Index(value = ["channelId"]),
+        Index(value = ["startTime"]),
+        Index(value = ["endTime"])
+    ]
 )
 data class EpgProgramEntity(
     @PrimaryKey(autoGenerate = true)

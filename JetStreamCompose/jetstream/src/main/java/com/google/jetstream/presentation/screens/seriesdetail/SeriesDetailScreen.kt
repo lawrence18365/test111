@@ -177,13 +177,16 @@ fun SeriesDetailScreen(
                                         coroutineScope.launch {
                                             val url = viewModel.getEpisodeStreamUrl(firstEpisode)
                                             if (url != null) {
+                                                val season = state.selectedSeason
+                                                val epNum = firstEpisode.episodeNum
                                                 val episodeName = firstEpisode.title
-                                                    ?: "S${state.selectedSeason}E${firstEpisode.episodeNum}"
+                                                    ?: "S${season}E${epNum}"
                                                 onEpisodeSelected(
                                                     StreamPlayerArgs(
                                                         streamUrl = url,
                                                         streamName = "$seriesTitle - $episodeName",
-                                                        streamId = firstEpisode.id?.toIntOrNull() ?: 0,
+                                                        streamId = firstEpisode.id
+                                                            ?.toIntOrNull() ?: 0,
                                                         streamType = StreamTypes.SERIES,
                                                         streamIcon = info?.cover
                                                     )
@@ -208,8 +211,10 @@ fun SeriesDetailScreen(
                                     coroutineScope.launch {
                                         val url = viewModel.getEpisodeStreamUrl(firstEpisode)
                                         if (url != null) {
+                                            val season = state.selectedSeason
+                                            val epNum = firstEpisode.episodeNum
                                             val episodeName = firstEpisode.title
-                                                ?: "S${state.selectedSeason}E${firstEpisode.episodeNum}"
+                                                ?: "S${season}E${epNum}"
                                             onEpisodeSelected(
                                                 StreamPlayerArgs(
                                                     streamUrl = url,

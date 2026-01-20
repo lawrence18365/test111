@@ -20,7 +20,8 @@ class GlobalExceptionHandler(
         // 3. Delegate to default handler to let the OS handle the actual process death
         // This ensures the standard "App has stopped" dialog might appear if in foreground,
         // or system logs are written correctly.
-        // If you want to suppress the dialog completely, you can skip this and just kill the process.
+        // If you want to suppress the dialog completely, you can skip this 
+        // and just kill the process.
         // For "smoothness", usually we kill it silently or restart.
         
         // Let's try to kill it cleanly to avoid a stuck state.

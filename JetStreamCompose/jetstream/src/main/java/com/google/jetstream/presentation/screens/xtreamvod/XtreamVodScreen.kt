@@ -59,12 +59,12 @@ import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamVodItem
+import com.google.jetstream.presentation.theme.JetStreamCardShape
 import com.google.jetstream.presentation.utils.CountryFilter
 import com.google.jetstream.presentation.utils.CountryFilterRow
 import com.google.jetstream.presentation.utils.DefaultCountryFilters
 import com.google.jetstream.presentation.utils.focusBorderStroke
 import com.google.jetstream.presentation.utils.headerBackdropBrush
-import com.google.jetstream.presentation.theme.JetStreamCardShape
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -159,7 +159,7 @@ fun XtreamVodScreen(
                         }
                     }
                     LaunchedEffect(isTopBarVisible) {
-                         onScroll(isTopBarVisible)
+                        onScroll(isTopBarVisible)
                     }
 
                     TvLazyVerticalGrid(
@@ -189,7 +189,7 @@ fun XtreamVodScreen(
                 }
             }
             LaunchedEffect(isTopBarVisible) {
-                 onScroll(isTopBarVisible)
+                onScroll(isTopBarVisible)
             }
 
             // Handle back to go to country selection

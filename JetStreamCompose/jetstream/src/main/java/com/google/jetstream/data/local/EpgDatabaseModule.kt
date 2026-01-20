@@ -37,8 +37,8 @@ object EpgDatabaseModule {
             EpgDatabase::class.java,
             "epg_database"
         )
-        .fallbackToDestructiveMigration()
-        .build()
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides

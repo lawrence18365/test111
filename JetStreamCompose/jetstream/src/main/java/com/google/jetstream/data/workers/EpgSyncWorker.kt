@@ -28,11 +28,8 @@ import com.google.jetstream.data.local.EpgDao
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import java.io.InputStream
-import java.net.URL
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.xmlpull.v1.XmlPullParser
@@ -54,11 +51,11 @@ class EpgSyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         return try {
             Log.d(TAG, "Starting EPG Sync from $epgUrl")
-            
+
             // Download XML
             val request = Request.Builder().url(epgUrl).build()
             val response = okHttpClient.newCall(request).execute()
-            
+
             if (!response.isSuccessful || response.body == null) {
                 Log.e(TAG, "Failed to download EPG: ${response.code}")
                 return Result.retry()
@@ -99,7 +96,7 @@ class EpgSyncWorker @AssistedInject constructor(
                     }
                 }
             }
-            
+
             // Batch insert to avoid OOM
             if (channels.size >= 100) {
                 epgDao.insertChannels(channels)
@@ -109,14 +106,14 @@ class EpgSyncWorker @AssistedInject constructor(
                 epgDao.insertPrograms(programs)
                 programs.clear()
             }
-            
+
             eventType = parser.next()
         }
 
         // Insert remaining
         if (channels.isNotEmpty()) epgDao.insertChannels(channels)
         if (programs.isNotEmpty()) epgDao.insertPrograms(programs)
-        
+
         // Clean up old programs
         val yesterday = System.currentTimeMillis() - 24 * 60 * 60 * 1000
         epgDao.deleteOldPrograms(yesterday)
@@ -138,7 +135,7 @@ class EpgSyncWorker @AssistedInject constructor(
                 else -> skip(parser)
             }
         }
-        
+
         // Filter Channels (Optional, but safer)
         if (isUnsafe(displayName)) return null
 
@@ -149,7 +146,7 @@ class EpgSyncWorker @AssistedInject constructor(
         val channelId = parser.getAttributeValue(null, "channel") ?: return null
         val startStr = parser.getAttributeValue(null, "start")
         val stopStr = parser.getAttributeValue(null, "stop")
-        
+
         var title = ""
         var description: String? = null
         var category: String? = null
@@ -218,7 +215,7 @@ class EpgSyncWorker @AssistedInject constructor(
             // XMLTV format is flexible.
             // Simple approach:
             val cleanDate = if (dateStr.length > 18) dateStr else "$dateStr +0000"
-             // Often XMLTV is "20080715003000 -0600"
+            // Often XMLTV is "20080715003000 -0600"
             dateFormat.parse(cleanDate)?.time ?: 0L
         } catch (e: Exception) {
             0L

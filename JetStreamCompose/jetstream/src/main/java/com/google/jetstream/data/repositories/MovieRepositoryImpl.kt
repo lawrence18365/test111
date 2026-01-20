@@ -20,7 +20,6 @@ import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.data.entities.MovieCategoryDetails
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.entities.MovieList
-import com.google.jetstream.data.entities.ThumbnailType
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import javax.inject.Inject
@@ -83,7 +82,7 @@ class MovieRepositoryImpl @Inject constructor(
             moviesResult.data.map { item ->
                 Movie(
                     id = item.streamId.toString(),
-                    videoUri = "", 
+                    videoUri = "",
                     subtitleUri = null,
                     posterUri = item.streamIcon ?: "",
                     name = item.name,
@@ -106,7 +105,7 @@ class MovieRepositoryImpl @Inject constructor(
         // Check if it is a Series or Movie. IDs might overlap, but for now assuming VOD first.
         // Or try both.
         val id = movieId.toIntOrNull() ?: return emptyMovieDetails(movieId)
-        
+
         // Try VOD Info first
         val vodResult = xtreamRepository.getVodInfo(id)
         if (vodResult is XtreamResult.Success) {
@@ -114,7 +113,7 @@ class MovieRepositoryImpl @Inject constructor(
             val movieData = vodResult.data.movieData
             val extension = movieData?.containerExtension ?: "mp4"
             val streamUrl = xtreamRepository.buildVodStreamUrl(id, extension) ?: ""
-            
+
             return MovieDetails(
                 id = movieId,
                 videoUri = streamUrl,
@@ -138,10 +137,10 @@ class MovieRepositoryImpl @Inject constructor(
                 reviewsAndRatings = emptyList()
             )
         }
-        
+
         // Fallback to Series Info if VOD fails (hacky but handles unified ID system if any)
         // Ideally we should know type. But standard interface doesn't pass type.
-        
+
         return emptyMovieDetails(movieId)
     }
 
@@ -221,7 +220,7 @@ class MovieRepositoryImpl @Inject constructor(
             result.data.map { item ->
                 Movie(
                     id = item.streamId.toString(),
-                    videoUri = "", 
+                    videoUri = "",
                     subtitleUri = null,
                     posterUri = item.streamIcon ?: "",
                     name = item.name,

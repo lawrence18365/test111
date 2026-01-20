@@ -52,7 +52,7 @@ class FavouriteScreenViewModel @Inject constructor(
                 name = fav.name,
                 description = fav.categoryName ?: "",
                 // Use category field to store streamType for filtering
-                category = fav.streamType, 
+                category = fav.streamType,
                 language = "",
                 format = ""
             )
@@ -77,7 +77,7 @@ class FavouriteScreenViewModel @Inject constructor(
                 }
             }
         }
-        
+
         FavouriteScreenUiState.Ready(filtered, filterList)
     }.stateIn(
         scope = viewModelScope,

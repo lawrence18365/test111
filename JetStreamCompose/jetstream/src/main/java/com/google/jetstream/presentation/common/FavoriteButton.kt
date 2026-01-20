@@ -45,7 +45,7 @@ fun FavoriteButton(
 ) {
     val icon = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
     val targetColor = if (isFavorite) Color.Red else Color.White.copy(alpha = 0.8f)
-    
+
     val color by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 300),

@@ -30,7 +30,7 @@ import dagger.hilt.components.SingletonComponent
 class JetStreamApplication : Application() {
     override fun onCreate() {
         super.onCreate()
-        
+
         // Install Bulletproof Crash Handler
         val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(this, defaultHandler))

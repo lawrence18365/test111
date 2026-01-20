@@ -110,7 +110,7 @@ fun MovieDetails(
                         music = movieDetails.music
                     )
                 }
-                
+
                 Row(
                     modifier = Modifier.padding(top = 24.dp),
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically

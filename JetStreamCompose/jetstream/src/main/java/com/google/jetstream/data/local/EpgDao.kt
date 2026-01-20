@@ -33,13 +33,15 @@ interface EpgDao {
     suspend fun insertPrograms(programs: List<EpgProgramEntity>)
 
     @Transaction
-    @Query("""
-        SELECT * FROM epg_programs 
-        WHERE channelId = :channelId 
-        AND endTime > :startTime 
+    @Query(
+        """
+        SELECT * FROM epg_programs
+        WHERE channelId = :channelId
+        AND endTime > :startTime
         AND startTime < :endTime
         ORDER BY startTime ASC
-    """)
+    """
+    )
     suspend fun getProgramsForChannel(
         channelId: String,
         startTime: Long,
@@ -47,13 +49,15 @@ interface EpgDao {
     ): List<EpgProgramEntity>
 
     @Transaction
-    @Query("""
-        SELECT * FROM epg_programs 
-        WHERE channelId IN (:channelIds) 
-        AND endTime > :startTime 
+    @Query(
+        """
+        SELECT * FROM epg_programs
+        WHERE channelId IN (:channelIds)
+        AND endTime > :startTime
         AND startTime < :endTime
         ORDER BY startTime ASC
-    """)
+    """
+    )
     suspend fun getProgramsForChannels(
         channelIds: List<String>,
         startTime: Long,
@@ -65,7 +69,7 @@ interface EpgDao {
 
     @Query("DELETE FROM epg_programs")
     suspend fun deleteAllPrograms()
-    
+
     @Query("DELETE FROM epg_programs WHERE endTime < :timestamp")
     suspend fun deleteOldPrograms(timestamp: Long)
 }

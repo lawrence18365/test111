@@ -65,13 +65,13 @@ import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
 import com.google.jetstream.presentation.screens.home.HomeScreen
 import com.google.jetstream.presentation.screens.livechannels.LiveChannelsScreen
 import com.google.jetstream.presentation.screens.profile.ProfileScreen
+import com.google.jetstream.presentation.screens.seriesdetail.SeriesDetailScreen
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.xtreamsearch.XtreamSearchScreen
 import com.google.jetstream.presentation.screens.xtreamseries.XtreamSeriesScreen
 import com.google.jetstream.presentation.screens.xtreamvod.XtreamVodDetailScreen
 import com.google.jetstream.presentation.screens.xtreamvod.XtreamVodScreen
 import com.google.jetstream.presentation.utils.Padding
-import com.google.jetstream.presentation.screens.seriesdetail.SeriesDetailScreen
 
 val ParentPadding = PaddingValues(vertical = 16.dp, horizontal = 58.dp)
 

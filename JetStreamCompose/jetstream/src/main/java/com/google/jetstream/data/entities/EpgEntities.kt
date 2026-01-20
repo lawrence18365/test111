@@ -40,8 +40,8 @@ data class EpgChannelEntity(
         )
     ],
     indices = [
-        Index(value = ["channelId"]), 
-        Index(value = ["startTime"]), 
+        Index(value = ["channelId"]),
+        Index(value = ["startTime"]),
         Index(value = ["endTime"])
     ]
 )

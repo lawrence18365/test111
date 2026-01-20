@@ -180,7 +180,7 @@ fun SeriesDetailScreen(
                                                 val season = state.selectedSeason
                                                 val epNum = firstEpisode.episodeNum
                                                 val episodeName = firstEpisode.title
-                                                    ?: "S${season}E${epNum}"
+                                                    ?: "S${season}E$epNum"
                                                 onEpisodeSelected(
                                                     StreamPlayerArgs(
                                                         streamUrl = url,
@@ -214,7 +214,7 @@ fun SeriesDetailScreen(
                                             val season = state.selectedSeason
                                             val epNum = firstEpisode.episodeNum
                                             val episodeName = firstEpisode.title
-                                                ?: "S${season}E${epNum}"
+                                                ?: "S${season}E$epNum"
                                             onEpisodeSelected(
                                                 StreamPlayerArgs(
                                                     streamUrl = url,

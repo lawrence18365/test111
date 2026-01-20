@@ -33,12 +33,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -51,6 +50,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.grid.TvGridCells
 import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
+import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
@@ -60,8 +60,8 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.presentation.utils.CountryFilter
-import com.google.jetstream.presentation.utils.DefaultCountryFilters
 import com.google.jetstream.presentation.utils.CountryFilterRow
+import com.google.jetstream.presentation.utils.DefaultCountryFilters
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -213,7 +213,7 @@ fun XtreamSeriesScreen(
                     selectedCountry = state.selectedCountry,
                     onCountrySelected = { viewModel.selectCountry(it) }
                 )
-                
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (state.isLoadingSeries) {

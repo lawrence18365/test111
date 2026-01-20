@@ -25,7 +25,7 @@ interface FavoritesRepository {
     fun getFavoritesByType(streamType: String): Flow<List<FavoriteChannel>>
     fun isFavorite(streamId: Int): Flow<Boolean>
     suspend fun toggleFavorite(favorite: FavoriteChannel)
-    
+
     // History methods
     fun getRecentHistory(limit: Int): Flow<List<WatchHistory>>
     suspend fun addToHistory(

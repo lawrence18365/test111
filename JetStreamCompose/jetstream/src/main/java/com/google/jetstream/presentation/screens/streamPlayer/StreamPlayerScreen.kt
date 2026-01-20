@@ -44,8 +44,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LiveTv
@@ -690,7 +688,7 @@ private fun ChannelInfoOverlay(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-                // Favorite button
+            // Favorite button
             Row {
                 if (showPip) {
                     IconButton(onClick = onEnterPip) {

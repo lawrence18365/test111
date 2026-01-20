@@ -139,16 +139,16 @@ class EpgScreenViewModel @Inject constructor(
     private suspend fun fetchEpgData(channels: List<XtreamChannel>): Map<Int, List<EpgProgram>> {
         val now = System.currentTimeMillis()
         val start = now - 24 * 60 * 60 * 1000 // Last 24 hours
-        val end = now + 48 * 60 * 60 * 1000   // Next 48 hours
+        val end = now + 48 * 60 * 60 * 1000 // Next 48 hours
 
         // Get all valid EPG IDs from channels
         val epgIds = channels.mapNotNull { it.epgChannelId }.distinct()
-        
+
         if (epgIds.isEmpty()) return emptyMap()
 
         // Fetch programs for these IDs
         val entities = epgRepository.getProgramsForChannels(epgIds, start, end)
-        
+
         // Group by EPG Channel ID
         val programsByEpgId = entities.groupBy { it.channelId }
 
@@ -173,7 +173,7 @@ class EpgScreenViewModel @Inject constructor(
                         isCatchupAvailable(channel, entity.startTime, entity.endTime)
                 )
             }
-            
+
             channel.streamId to programs
         }
     }

@@ -38,10 +38,10 @@ class GlobalExceptionHandler(
         // or system logs are written correctly.
         // If you want to suppress the dialog completely, you can skip this and just kill the process.
         // For "smoothness", usually we kill it silently or restart.
-        
+
         // Let's try to kill it cleanly to avoid a stuck state.
         defaultHandler?.uncaughtException(thread, throwable)
-        
+
         Process.killProcess(Process.myPid())
         exitProcess(10)
     }

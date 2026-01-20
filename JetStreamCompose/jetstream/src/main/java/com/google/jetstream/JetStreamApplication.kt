@@ -25,8 +25,18 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
 
+import com.google.jetstream.data.util.GlobalExceptionHandler
+
 @HiltAndroidApp
-class JetStreamApplication : Application()
+class JetStreamApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Install Bulletproof Crash Handler
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(this, defaultHandler))
+    }
+}
 
 @InstallIn(SingletonComponent::class)
 @Module

@@ -147,6 +147,8 @@ dependencies {
 
     // Compose Previews
     debugImplementation(libs.androidx.compose.ui.tooling)
+    // Memory Leak Detection
+    debugImplementation(libs.leakcanary.android)
 
     // For baseline profile generation
     baselineProfile(project(":benchmark"))

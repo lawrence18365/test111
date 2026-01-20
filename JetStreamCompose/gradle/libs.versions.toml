@@ -54,6 +54,7 @@ androidx-tv-material = { module = "androidx.tv:tv-material", version.ref = "tv-m
 androidx-tv-foundation = { module = "androidx.tv:tv-foundation", version.ref = "tv-foundation" }
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
 androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
+leakcanary-android = { module = "com.squareup.leakcanary:leakcanary-android", version = "2.14" }
 coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coil-compose" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt-android" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt-android" }

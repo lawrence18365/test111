@@ -5,6 +5,9 @@
 # Mac files
 .DS_Store
 
+# Agent instructions
+AGENTS.md
+
 # files for the dex VM
 *.dex
 

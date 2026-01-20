@@ -43,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -60,8 +61,12 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamEpisode
+import com.google.jetstream.presentation.common.FavoriteButton
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
+import com.google.jetstream.presentation.utils.CastChipsRow
+import com.google.jetstream.presentation.utils.QualityBadgesRow
+import com.google.jetstream.presentation.utils.openYouTube
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -69,10 +74,12 @@ import kotlinx.coroutines.launch
 fun SeriesDetailScreen(
     onEpisodeSelected: (StreamPlayerArgs) -> Unit,
     onBackPressed: () -> Unit,
+    onCastSelected: (String) -> Unit = {},
     viewModel: SeriesDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     when (val state = uiState) {
         is SeriesDetailUiState.Loading -> {
@@ -117,6 +124,10 @@ fun SeriesDetailScreen(
 
         is SeriesDetailUiState.Ready -> {
             val info = state.seriesInfo.info
+            val isFavorite by viewModel.isFavorite.collectAsState()
+            val trailerId = info?.youtubeTrailer?.trim().orEmpty()
+            val hasTrailer = trailerId.isNotEmpty()
+            val seriesTitle = info?.name ?: "Series"
 
             Row(
                 modifier = Modifier
@@ -131,22 +142,97 @@ fun SeriesDetailScreen(
                 ) {
                     // Cover image
                     if (!info?.cover.isNullOrBlank()) {
-                        AsyncImage(
-                            model = info?.cover,
-                            contentDescription = info?.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(2f / 3f)
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
+                        Box {
+                            AsyncImage(
+                                model = info?.cover,
+                                contentDescription = info?.name,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(2f / 3f)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            // Favorite Button Overlay
+                            FavoriteButton(
+                                isFavorite = isFavorite,
+                                onToggle = { viewModel.toggleFavorite() },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    val firstEpisode = state.episodes.firstOrNull()
+                    if (firstEpisode != null) {
+                        if (hasTrailer) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        coroutineScope.launch {
+                                            val url = viewModel.getEpisodeStreamUrl(firstEpisode)
+                                            if (url != null) {
+                                                val episodeName = firstEpisode.title
+                                                    ?: "S${state.selectedSeason}E${firstEpisode.episodeNum}"
+                                                onEpisodeSelected(
+                                                    StreamPlayerArgs(
+                                                        streamUrl = url,
+                                                        streamName = "$seriesTitle - $episodeName",
+                                                        streamId = firstEpisode.id?.toIntOrNull() ?: 0,
+                                                        streamType = StreamTypes.SERIES,
+                                                        streamIcon = info?.cover
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Play")
+                                }
+                                Button(
+                                    onClick = { openYouTube(context, trailerId) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Watch Trailer")
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    coroutineScope.launch {
+                                        val url = viewModel.getEpisodeStreamUrl(firstEpisode)
+                                        if (url != null) {
+                                            val episodeName = firstEpisode.title
+                                                ?: "S${state.selectedSeason}E${firstEpisode.episodeNum}"
+                                            onEpisodeSelected(
+                                                StreamPlayerArgs(
+                                                    streamUrl = url,
+                                                    streamName = "$seriesTitle - $episodeName",
+                                                    streamId = firstEpisode.id?.toIntOrNull() ?: 0,
+                                                    streamType = StreamTypes.SERIES,
+                                                    streamIcon = info?.cover
+                                                )
+                                            )
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Play")
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
                     // Title
                     Text(
-                        text = info?.name ?: "Unknown Series",
+                        text = seriesTitle,
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
@@ -176,6 +262,12 @@ fun SeriesDetailScreen(
                         }
                     }
 
+                    QualityBadgesRow(
+                        videoInfo = info?.video,
+                        audioInfo = info?.audio,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+
                     // Plot
                     info?.plot?.let { plot ->
                         if (plot.isNotBlank()) {
@@ -190,18 +282,18 @@ fun SeriesDetailScreen(
                         }
                     }
 
-                    // Cast & Director
-                    info?.cast?.let { cast ->
-                        if (cast.isNotBlank()) {
-                            Text(
-                                text = "Cast: $cast",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
+                    if (!info?.cast.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "Cast",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        CastChipsRow(
+                            cast = info?.cast,
+                            onCastSelected = onCastSelected
+                        )
                     }
                 }
 

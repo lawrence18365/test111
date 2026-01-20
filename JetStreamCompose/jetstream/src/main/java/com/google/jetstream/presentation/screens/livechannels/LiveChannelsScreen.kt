@@ -21,7 +21,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -60,21 +60,25 @@ import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.FilterChip
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
 import com.google.jetstream.data.local.WatchHistory
-import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
+import com.google.jetstream.presentation.utils.CountryFilterRow
+import com.google.jetstream.presentation.utils.focusBorderStroke
+import com.google.jetstream.presentation.utils.headerBackdropBrush
+import com.google.jetstream.presentation.theme.JetStreamCardShape
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun LiveChannelsScreen(
     onChannelSelected: (StreamPlayerArgs) -> Unit,
+    onScroll: (isTopBarVisible: Boolean) -> Unit = {},
     viewModel: LiveChannelsScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -83,6 +87,7 @@ fun LiveChannelsScreen(
 
     when (val state = uiState) {
         is LiveChannelsUiState.Loading -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -99,6 +104,7 @@ fun LiveChannelsScreen(
         }
 
         is LiveChannelsUiState.Error -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -120,6 +126,17 @@ fun LiveChannelsScreen(
 
         is LiveChannelsUiState.Ready -> {
             val gridState = rememberTvLazyGridState()
+            val isTopBarVisible by remember {
+                derivedStateOf {
+                    gridState.firstVisibleItemIndex == 0 &&
+                        gridState.firstVisibleItemScrollOffset < 100
+                }
+            }
+
+            LaunchedEffect(isTopBarVisible) {
+                onScroll(isTopBarVisible)
+            }
+
             val showExpandedHeader by remember {
                 derivedStateOf {
                     gridState.firstVisibleItemIndex == 0 &&
@@ -132,81 +149,93 @@ fun LiveChannelsScreen(
                     .fillMaxSize()
                     .padding(horizontal = 48.dp, vertical = 24.dp)
             ) {
+                val headerBrush = headerBackdropBrush()
                 val recentLiveHistory = remember(recentHistory) {
                     recentHistory.filter { it.streamType == StreamTypes.LIVE }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(headerBrush)
+                        .padding(bottom = 8.dp)
                 ) {
-                    Text(
-                        text = "Live TV",
-                        style = MaterialTheme.typography.headlineLarge
-                    )
-
-                    if (state.channels.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = "${state.channels.size} channels",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            text = "Live TV",
+                            style = MaterialTheme.typography.headlineLarge
                         )
-                    }
-                }
 
-                AnimatedVisibility(
-                    visible = showExpandedHeader,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    Column {
-                        if (recentLiveHistory.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                        if (state.channels.isNotEmpty()) {
                             Text(
-                                text = "Recently Watched",
-                                style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.padding(bottom = 12.dp)
+                                text = "${state.selectedCountry.displayName} · " +
+                                    "${state.channels.size} channels",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
+                        }
+                    }
 
-                            TvLazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                contentPadding = PaddingValues(bottom = 8.dp)
-                            ) {
-                                items(recentLiveHistory, key = { it.streamId }) { history ->
-                                    HistoryChannelCard(
-                                        history = history,
-                                        onClick = {
-                                            coroutineScope.launch {
-                                                val streamUrl = viewModel.getStreamUrl(
-                                                    history.streamId
-                                                )
-                                                if (streamUrl != null) {
-                                                    onChannelSelected(
-                                                        StreamPlayerArgs(
-                                                            streamUrl = streamUrl,
-                                                            streamName = history.name,
-                                                            streamId = history.streamId,
-                                                            streamType = StreamTypes.LIVE,
-                                                            streamIcon = history.streamIcon
-                                                        )
+                    AnimatedVisibility(
+                        visible = showExpandedHeader,
+                        enter = fadeIn() + expandVertically(),
+                        exit = fadeOut() + shrinkVertically()
+                    ) {
+                        Column {
+                            if (recentLiveHistory.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Recently Watched",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+
+                                TvLazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    contentPadding = PaddingValues(bottom = 8.dp)
+                                ) {
+                                    items(recentLiveHistory, key = { it.streamId }) { history ->
+                                        HistoryChannelCard(
+                                            history = history,
+                                            onClick = {
+                                                coroutineScope.launch {
+                                                    val streamUrl = viewModel.getStreamUrl(
+                                                        history.streamId
                                                     )
+                                                    if (streamUrl != null) {
+                                                        onChannelSelected(
+                                                            StreamPlayerArgs(
+                                                                streamUrl = streamUrl,
+                                                                streamName = history.name,
+                                                                streamId = history.streamId,
+                                                                streamType = StreamTypes.LIVE,
+                                                                streamIcon = history.streamIcon
+                                                            )
+                                                        )
+                                                    }
                                                 }
                                             }
-                                        }
-                                    )
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        // Category Filter Chips
-                        if (state.categories.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                            CategoryFilterRow(
-                                categories = state.categories,
-                                selectedCategoryId = state.selectedCategoryId,
-                                onCategorySelected = { viewModel.selectCategory(it) }
-                            )
+                            if (state.categories.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Countries",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                                )
+                                CountryFilterRow(
+                                    selectedCountry = state.selectedCountry,
+                                    onCountrySelected = { viewModel.selectCountry(it) }
+                                )
+                            }
                         }
                     }
                 }
@@ -219,10 +248,18 @@ fun LiveChannelsScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No channels found",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "No channels found for ${state.selectedCountry.displayName}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Try USA or UK.",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 } else {
                     TvLazyVerticalGrid(
@@ -267,60 +304,29 @@ fun LiveChannelsScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun CategoryFilterRow(
-    categories: List<XtreamCategory>,
-    selectedCategoryId: String?,
-    onCategorySelected: (String?) -> Unit
-) {
-    TvLazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 8.dp)
-    ) {
-        // "All" chip
-        item {
-            FilterChip(
-                selected = selectedCategoryId == null,
-                onClick = { onCategorySelected(null) }
-            ) {
-                Text("All")
-            }
-        }
-
-        // Category chips
-        items(categories, key = { it.categoryId }) { category ->
-            FilterChip(
-                selected = selectedCategoryId == category.categoryId,
-                onClick = { onCategorySelected(category.categoryId) }
-            ) {
-                Text(
-                    text = category.categoryName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
 private fun ChannelCard(
     channel: XtreamChannel,
     onClick: () -> Unit
 ) {
+    val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 10f),
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF1E1E1E)
+            containerColor = container,
+            focusedContainerColor = focusedContainer
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFF00b4d8))
+                border = focusBorderStroke(),
+                shape = JetStreamCardShape
             )
-        )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.02f),
+        shape = CardDefaults.shape(shape = JetStreamCardShape)
     ) {
         Column(
             modifier = Modifier
@@ -361,19 +367,25 @@ private fun HistoryChannelCard(
     history: WatchHistory,
     onClick: () -> Unit
 ) {
+    val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
     Card(
         onClick = onClick,
         modifier = Modifier
             .width(220.dp)
             .height(140.dp),
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF1E1E1E)
+            containerColor = container,
+            focusedContainerColor = focusedContainer
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFF00b4d8))
+                border = focusBorderStroke(),
+                shape = JetStreamCardShape
             )
-        )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.02f),
+        shape = CardDefaults.shape(shape = JetStreamCardShape)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (history.streamIcon != null) {

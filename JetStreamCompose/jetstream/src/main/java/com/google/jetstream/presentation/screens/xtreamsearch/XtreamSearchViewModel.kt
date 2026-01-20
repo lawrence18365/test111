@@ -51,7 +51,10 @@ data class SearchUiState(
     val query: String = "",
     val isLoading: Boolean = false,
     val isLoadingData: Boolean = false,
-    val results: List<SearchResult> = emptyList(),
+    // Split results
+    val liveResults: List<SearchResult.Channel> = emptyList(),
+    val movieResults: List<SearchResult.Vod> = emptyList(),
+    val seriesResults: List<SearchResult.Series> = emptyList(),
     val filter: SearchFilter = SearchFilter.ALL,
     val error: String? = null,
     val channelsLoaded: Boolean = false,
@@ -60,7 +63,10 @@ data class SearchUiState(
     val channelsError: String? = null,
     val vodError: String? = null,
     val seriesError: String? = null
-)
+) {
+    val hasResults: Boolean
+        get() = liveResults.isNotEmpty() || movieResults.isNotEmpty() || seriesResults.isNotEmpty()
+}
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
@@ -87,12 +93,14 @@ class XtreamSearchViewModel @Inject constructor(
             _searchQuery
                 .debounce(300)
                 .distinctUntilChanged()
-                .filter { it.length >= 2 || it.isEmpty() }
+                .filter { it.length >= 3 || it.isEmpty() }
                 .collect { query ->
                     if (query.isEmpty()) {
                         _uiState.value = _uiState.value.copy(
                             query = "",
-                            results = emptyList(),
+                            liveResults = emptyList(),
+                            movieResults = emptyList(),
+                            seriesResults = emptyList(),
                             isLoading = false,
                             error = null
                         )
@@ -113,6 +121,11 @@ class XtreamSearchViewModel @Inject constructor(
         if (_uiState.value.query.isNotEmpty()) {
             performSearch(_uiState.value.query)
         }
+    }
+
+    private fun sanitize(input: String): String {
+        // Lowercase and remove all non-alphanumeric characters
+        return input.lowercase().replace(Regex("[^a-z0-9]"), "")
     }
 
     private fun performSearch(query: String) {
@@ -139,55 +152,45 @@ class XtreamSearchViewModel @Inject constructor(
             }
 
             // Perform the actual search
-            val queryLower = query.lowercase()
-            val results = mutableListOf<SearchResult>()
+            val queryClean = sanitize(query)
+
+            // Temporary lists
+            val liveList = mutableListOf<SearchResult.Channel>()
+            val movieList = mutableListOf<SearchResult.Vod>()
+            val seriesList = mutableListOf<SearchResult.Series>()
 
             cacheMutex.withLock {
                 // Search channels
                 if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
                     cachedChannels?.asSequence()
-                        ?.filter { it.name.lowercase().contains(queryLower) }
+                        ?.filter { sanitize(it.name).contains(queryClean) }
                         ?.take(50)
-                        ?.forEach { results.add(SearchResult.Channel(it)) }
+                        ?.forEach { liveList.add(SearchResult.Channel(it)) }
                 }
 
                 // Search VOD
                 if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
                     cachedVod?.asSequence()
-                        ?.filter { it.name.lowercase().contains(queryLower) }
+                        ?.filter { sanitize(it.name).contains(queryClean) }
                         ?.take(50)
-                        ?.forEach { results.add(SearchResult.Vod(it)) }
+                        ?.forEach { movieList.add(SearchResult.Vod(it)) }
                 }
 
                 // Search Series
                 if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
                     cachedSeries?.asSequence()
                         ?.filter {
-                            it.name.lowercase().contains(queryLower) ||
-                                it.genre?.lowercase()?.contains(queryLower) == true
+                            sanitize(it.name).contains(queryClean)
                         }
                         ?.take(50)
-                        ?.forEach { results.add(SearchResult.Series(it)) }
-                }
-            }
-
-            // Sort by relevance (exact matches first)
-            val sortedResults = results.sortedByDescending { result ->
-                val name = when (result) {
-                    is SearchResult.Channel -> result.channel.name
-                    is SearchResult.Vod -> result.vod.name
-                    is SearchResult.Series -> result.series.name
-                }.lowercase()
-
-                when {
-                    name == queryLower -> 3
-                    name.startsWith(queryLower) -> 2
-                    else -> 1
+                        ?.forEach { seriesList.add(SearchResult.Series(it)) }
                 }
             }
 
             _uiState.value = _uiState.value.copy(
-                results = sortedResults,
+                liveResults = liveList,
+                movieResults = movieList,
+                seriesResults = seriesList,
                 isLoading = false
             )
         }
@@ -284,7 +287,9 @@ class XtreamSearchViewModel @Inject constructor(
     fun clearSearch() {
         _uiState.value = _uiState.value.copy(
             query = "",
-            results = emptyList(),
+            liveResults = emptyList(),
+            movieResults = emptyList(),
+            seriesResults = emptyList(),
             isLoading = false,
             error = null
         )

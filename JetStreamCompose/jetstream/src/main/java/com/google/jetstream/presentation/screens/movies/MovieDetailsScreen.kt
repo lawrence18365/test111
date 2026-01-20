@@ -58,8 +58,11 @@ fun MovieDetailsScreen(
         }
 
         is MovieDetailsScreenUiState.Done -> {
+            val isFavorite by movieDetailsScreenViewModel.isFavorite.collectAsStateWithLifecycle()
             Details(
                 movieDetails = s.movieDetails,
+                isFavorite = isFavorite,
+                onToggleFavorite = { movieDetailsScreenViewModel.toggleFavorite(s.movieDetails) },
                 goToMoviePlayer = goToMoviePlayer,
                 onBackPressed = onBackPressed,
                 refreshScreenWithNewMovie = refreshScreenWithNewMovie,
@@ -74,6 +77,8 @@ fun MovieDetailsScreen(
 @Composable
 private fun Details(
     movieDetails: MovieDetails,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     goToMoviePlayer: (String) -> Unit,
     onBackPressed: () -> Unit,
     refreshScreenWithNewMovie: (Movie) -> Unit,
@@ -87,6 +92,8 @@ private fun Details(
         item {
             MovieDetails(
                 movieDetails = movieDetails,
+                isFavorite = isFavorite,
+                onToggleFavorite = onToggleFavorite,
                 goToMoviePlayer = goToMoviePlayer
             )
         }

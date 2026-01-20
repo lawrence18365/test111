@@ -19,9 +19,11 @@ package com.google.jetstream.presentation.screens.seriesdetail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.jetstream.data.local.FavoriteChannel
 import com.google.jetstream.data.models.xtream.XtreamEpisode
 import com.google.jetstream.data.models.xtream.XtreamSeason
 import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
+import com.google.jetstream.data.repositories.FavoritesRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -45,11 +47,15 @@ sealed interface SeriesDetailUiState {
 @HiltViewModel
 class SeriesDetailViewModel @Inject constructor(
     private val xtreamRepository: XtreamRepository,
+    private val favoritesRepository: FavoritesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<SeriesDetailUiState>(SeriesDetailUiState.Loading)
     val uiState: StateFlow<SeriesDetailUiState> = _uiState.asStateFlow()
+
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
 
     private var seriesInfo: XtreamSeriesInfo? = null
 
@@ -59,8 +65,32 @@ class SeriesDetailViewModel @Inject constructor(
     init {
         if (seriesId > 0) {
             loadSeriesInfo()
+            observeFavoriteStatus()
         } else {
             _uiState.value = SeriesDetailUiState.Error("Invalid series ID")
+        }
+    }
+
+    private fun observeFavoriteStatus() {
+        viewModelScope.launch {
+            favoritesRepository.isFavorite(seriesId).collect {
+                _isFavorite.value = it
+            }
+        }
+    }
+
+    fun toggleFavorite() {
+        val info = seriesInfo?.info ?: return
+        val fav = FavoriteChannel(
+            streamId = seriesId,
+            name = info.name ?: "Unknown Series",
+            streamIcon = info.cover,
+            categoryId = info.categoryId,
+            categoryName = null, // Can fetch if needed, but nullable
+            streamType = "series"
+        )
+        viewModelScope.launch {
+            favoritesRepository.toggleFavorite(fav)
         }
     }
 

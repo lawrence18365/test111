@@ -22,6 +22,8 @@ import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.categoryIdsForCountry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,13 +33,11 @@ import kotlinx.coroutines.launch
 
 sealed interface XtreamVodUiState {
     data object Loading : XtreamVodUiState
-    data class CategoriesLoaded(
-        val categories: List<XtreamCategory>
-    ) : XtreamVodUiState
+    data class CountriesLoaded(val categories: List<XtreamCategory>) : XtreamVodUiState
     data class Ready(
         val categories: List<XtreamCategory>,
+        val selectedCountry: CountryFilter,
         val vodItems: List<XtreamVodItem>,
-        val selectedCategoryId: String?,
         val isLoadingMovies: Boolean = false
     ) : XtreamVodUiState
     data class Error(val message: String) : XtreamVodUiState
@@ -54,6 +54,7 @@ class XtreamVodScreenViewModel @Inject constructor(
     private var categories: List<XtreamCategory> = emptyList()
     // Cache loaded movies by category to avoid re-fetching
     private val vodCache = mutableMapOf<String, List<XtreamVodItem>>()
+    private val countryCache = mutableMapOf<CountryFilter, List<XtreamVodItem>>()
 
     init {
         loadCategories()
@@ -66,9 +67,7 @@ class XtreamVodScreenViewModel @Inject constructor(
             when (val categoriesResult = xtreamRepository.getVodCategories()) {
                 is XtreamResult.Success -> {
                     categories = categoriesResult.data
-                    _uiState.value = XtreamVodUiState.CategoriesLoaded(
-                        categories = categories
-                    )
+                    _uiState.value = XtreamVodUiState.CountriesLoaded(categories = categories)
                 }
                 is XtreamResult.Error -> {
                     _uiState.value = XtreamVodUiState.Error(categoriesResult.message)
@@ -80,49 +79,71 @@ class XtreamVodScreenViewModel @Inject constructor(
         }
     }
 
-    fun selectCategory(categoryId: String) {
-        // Check cache first
-        vodCache[categoryId]?.let { cachedItems ->
+    fun selectCountry(country: CountryFilter) {
+        countryCache[country]?.let { cachedItems ->
             _uiState.value = XtreamVodUiState.Ready(
                 categories = categories,
-                vodItems = cachedItems,
-                selectedCategoryId = categoryId
+                selectedCountry = country,
+                vodItems = cachedItems
             )
             return
         }
 
-        // Load movies for selected category
         viewModelScope.launch {
-            // Show loading state while keeping categories visible
             _uiState.value = XtreamVodUiState.Ready(
                 categories = categories,
+                selectedCountry = country,
                 vodItems = emptyList(),
-                selectedCategoryId = categoryId,
                 isLoadingMovies = true
             )
 
-            when (val vodResult = xtreamRepository.getVodStreamsByCategory(categoryId)) {
-                is XtreamResult.Success -> {
-                    vodCache[categoryId] = vodResult.data
-                    _uiState.value = XtreamVodUiState.Ready(
-                        categories = categories,
-                        vodItems = vodResult.data,
-                        selectedCategoryId = categoryId,
-                        isLoadingMovies = false
-                    )
+            val categoryIds = categoryIdsForCountry(categories, country)
+            if (categoryIds.isEmpty()) {
+                _uiState.value = XtreamVodUiState.Ready(
+                    categories = categories,
+                    selectedCountry = country,
+                    vodItems = emptyList(),
+                    isLoadingMovies = false
+                )
+                return@launch
+            }
+
+            val allItems = mutableListOf<XtreamVodItem>()
+            for (categoryId in categoryIds) {
+                val cachedItems = vodCache[categoryId]
+                if (cachedItems != null) {
+                    allItems.addAll(cachedItems)
+                    continue
                 }
-                is XtreamResult.Error -> {
-                    _uiState.value = XtreamVodUiState.Error(vodResult.message)
-                }
-                else -> {
-                    _uiState.value = XtreamVodUiState.Error("Failed to load movies")
+                when (val vodResult = xtreamRepository.getVodStreamsByCategory(categoryId)) {
+                    is XtreamResult.Success -> {
+                        vodCache[categoryId] = vodResult.data
+                        allItems.addAll(vodResult.data)
+                    }
+                    is XtreamResult.Error -> {
+                        _uiState.value = XtreamVodUiState.Error(vodResult.message)
+                        return@launch
+                    }
+                    else -> {
+                        _uiState.value = XtreamVodUiState.Error("Failed to load movies")
+                        return@launch
+                    }
                 }
             }
+
+            val distinctItems = allItems.distinctBy { it.streamId }
+            countryCache[country] = distinctItems
+            _uiState.value = XtreamVodUiState.Ready(
+                categories = categories,
+                selectedCountry = country,
+                vodItems = distinctItems,
+                isLoadingMovies = false
+            )
         }
     }
 
-    fun goBackToCategories() {
-        _uiState.value = XtreamVodUiState.CategoriesLoaded(categories = categories)
+    fun goBackToCountries() {
+        _uiState.value = XtreamVodUiState.CountriesLoaded(categories = categories)
     }
 
     suspend fun getStreamUrl(vodItem: XtreamVodItem): String? {
@@ -132,6 +153,7 @@ class XtreamVodScreenViewModel @Inject constructor(
 
     fun refresh() {
         vodCache.clear()
+        countryCache.clear()
         loadCategories()
     }
 }

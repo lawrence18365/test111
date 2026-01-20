@@ -17,7 +17,6 @@
 package com.google.jetstream.presentation.screens.xtreamvod
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,9 +32,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -48,31 +49,35 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.grid.TvGridCells
 import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
+import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
-import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamVodItem
-import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
-import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
-import kotlinx.coroutines.launch
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.CountryFilterRow
+import com.google.jetstream.presentation.utils.DefaultCountryFilters
+import com.google.jetstream.presentation.utils.focusBorderStroke
+import com.google.jetstream.presentation.utils.headerBackdropBrush
+import com.google.jetstream.presentation.theme.JetStreamCardShape
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun XtreamVodScreen(
-    onVodSelected: (StreamPlayerArgs) -> Unit,
+    onVodSelected: (XtreamVodItem) -> Unit,
     onScroll: (isTopBarVisible: Boolean) -> Unit = {},
     viewModel: XtreamVodScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val coroutineScope = rememberCoroutineScope()
 
     when (val state = uiState) {
         is XtreamVodUiState.Loading -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -81,7 +86,7 @@ fun XtreamVodScreen(
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Loading categories...",
+                        text = "Loading countries...",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -89,6 +94,7 @@ fun XtreamVodScreen(
         }
 
         is XtreamVodUiState.Error -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -108,24 +114,31 @@ fun XtreamVodScreen(
             }
         }
 
-        is XtreamVodUiState.CategoriesLoaded -> {
-            // Show category selection grid
+        is XtreamVodUiState.CountriesLoaded -> {
+            onScroll(true)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 48.dp, vertical = 24.dp)
             ) {
-                Text(
-                    text = "Movies",
-                    style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = "Select a category to browse",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
+                val headerBrush = headerBackdropBrush()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(headerBrush)
+                        .padding(bottom = 8.dp)
+                ) {
+                    Text(
+                        text = "Movies",
+                        style = MaterialTheme.typography.headlineLarge,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                    Text(
+                        text = "Select a country to browse",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                    )
+                }
 
                 if (state.categories.isEmpty()) {
                     Box(
@@ -138,16 +151,28 @@ fun XtreamVodScreen(
                         )
                     }
                 } else {
+                    val gridState = rememberTvLazyGridState()
+                    val isTopBarVisible by remember {
+                        derivedStateOf {
+                            gridState.firstVisibleItemIndex == 0 &&
+                                gridState.firstVisibleItemScrollOffset < 100
+                        }
+                    }
+                    LaunchedEffect(isTopBarVisible) {
+                         onScroll(isTopBarVisible)
+                    }
+
                     TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(4),
+                        columns = TvGridCells.Fixed(3),
+                        state = gridState,
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(state.categories, key = { it.categoryId }) { category ->
-                            CategoryCard(
-                                category = category,
-                                onClick = { viewModel.selectCategory(category.categoryId) }
+                        items(DefaultCountryFilters, key = { it.name }) { country ->
+                            CountryCard(
+                                country = country,
+                                onClick = { viewModel.selectCountry(country) }
                             )
                         }
                     }
@@ -156,9 +181,20 @@ fun XtreamVodScreen(
         }
 
         is XtreamVodUiState.Ready -> {
-            // Handle back to go to category selection
+            val gridState = rememberTvLazyGridState()
+            val isTopBarVisible by remember {
+                derivedStateOf {
+                    gridState.firstVisibleItemIndex == 0 &&
+                        gridState.firstVisibleItemScrollOffset < 100
+                }
+            }
+            LaunchedEffect(isTopBarVisible) {
+                 onScroll(isTopBarVisible)
+            }
+
+            // Handle back to go to country selection
             BackHandler {
-                viewModel.goBackToCategories()
+                viewModel.goBackToCountries()
             }
 
             Column(
@@ -166,25 +202,45 @@ fun XtreamVodScreen(
                     .fillMaxSize()
                     .padding(horizontal = 48.dp, vertical = 24.dp)
             ) {
-                // Header with back hint
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                val headerBrush = headerBackdropBrush()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(headerBrush)
+                        .padding(bottom = 8.dp)
                 ) {
-                    Text(
-                        text = "Movies",
-                        style = MaterialTheme.typography.headlineLarge
+                    // Header with back hint
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Movies",
+                            style = MaterialTheme.typography.headlineLarge
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "/ ${state.selectedCountry.displayName}",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    CountryFilterRow(
+                        selectedCountry = state.selectedCountry,
+                        onCountrySelected = { viewModel.selectCountry(it) }
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    val categoryName = state.categories
-                        .firstOrNull { it.categoryId == state.selectedCategoryId }
-                        ?.categoryName ?: "All"
-                    Text(
-                        text = "/ $categoryName",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color(0xFF00b4d8)
-                    )
+
+                    if (!state.isLoadingMovies) {
+                        Text(
+                            text = "${state.selectedCountry.displayName} · " +
+                                "${state.vodItems.size} movies",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (state.isLoadingMovies) {
                     Box(
@@ -205,20 +261,23 @@ fun XtreamVodScreen(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "No movies found in this category",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "No movies found for ${state.selectedCountry.displayName}",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Try USA or UK.",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
                     }
                 } else {
-                    Text(
-                        text = "${state.vodItems.size} movies",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
                     TvLazyVerticalGrid(
                         columns = TvGridCells.Fixed(5),
+                        state = gridState,
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -227,24 +286,7 @@ fun XtreamVodScreen(
                             VodCard(
                                 vodItem = vodItem,
                                 onClick = {
-                                    coroutineScope.launch {
-                                        val streamUrl = viewModel.getStreamUrl(vodItem)
-                                        if (streamUrl != null) {
-                                            val categoryName = state.categories
-                                                .firstOrNull { it.categoryId == vodItem.categoryId }
-                                                ?.categoryName
-                                            onVodSelected(
-                                                StreamPlayerArgs(
-                                                    streamUrl = streamUrl,
-                                                    streamName = vodItem.name,
-                                                    streamId = vodItem.streamId,
-                                                    streamType = StreamTypes.VOD,
-                                                    streamIcon = vodItem.streamIcon,
-                                                    categoryName = categoryName
-                                                )
-                                            )
-                                        }
-                                    }
+                                    onVodSelected(vodItem)
                                 }
                             )
                         }
@@ -257,23 +299,29 @@ fun XtreamVodScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun CategoryCard(
-    category: XtreamCategory,
+private fun CountryCard(
+    country: CountryFilter,
     onClick: () -> Unit
 ) {
+    val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(16f / 9f),
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF1E1E1E)
+            containerColor = container,
+            focusedContainerColor = focusedContainer
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFF00b4d8))
+                border = focusBorderStroke(),
+                shape = JetStreamCardShape
             )
-        )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.02f),
+        shape = CardDefaults.shape(shape = JetStreamCardShape)
     ) {
         Box(
             modifier = Modifier
@@ -289,7 +337,7 @@ private fun CategoryCard(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = category.categoryName,
+                text = country.displayName,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -306,19 +354,25 @@ private fun VodCard(
     vodItem: XtreamVodItem,
     onClick: () -> Unit
 ) {
+    val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
     Card(
         onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .aspectRatio(2f / 3f),
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF1E1E1E)
+            containerColor = container,
+            focusedContainerColor = focusedContainer
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFF00b4d8))
+                border = focusBorderStroke(),
+                shape = JetStreamCardShape
             )
-        )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.02f),
+        shape = CardDefaults.shape(shape = JetStreamCardShape)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             // Movie Poster

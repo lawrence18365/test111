@@ -139,6 +139,9 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
+
     // Baseline profile installer
     implementation(libs.androidx.profileinstaller)
 

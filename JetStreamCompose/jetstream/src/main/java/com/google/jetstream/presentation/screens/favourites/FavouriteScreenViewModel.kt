@@ -22,7 +22,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.MovieList
-import com.google.jetstream.data.repositories.MovieRepository
+import com.google.jetstream.data.repositories.FavoritesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,19 +33,48 @@ import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
 class FavouriteScreenViewModel @Inject constructor(
-    movieRepository: MovieRepository
+    favoritesRepository: FavoritesRepository
 ) : ViewModel() {
 
     private val selectedFilterList = MutableStateFlow(FilterList())
 
     val uiState: StateFlow<FavouriteScreenUiState> = combine(
         selectedFilterList,
-        movieRepository.getFavouriteMovies()
-    ) { filterList, movieList ->
-        val idList = filterList.toIdList()
-        val filtered = movieList.filterIndexed { index, _ ->
-            idList.contains(index)
+        favoritesRepository.getAllFavorites()
+    ) { filterList, favorites ->
+        // Convert favorites to MovieList for display
+        val allMovies = favorites.map { fav ->
+            com.google.jetstream.data.entities.Movie(
+                id = fav.streamId.toString(),
+                videoUri = "", // Not needed for grid
+                subtitleUri = null,
+                posterUri = fav.streamIcon ?: "",
+                name = fav.name,
+                description = fav.categoryName ?: "",
+                category = fav.streamType, // Use category field to store streamType for filtering if needed
+                language = "",
+                format = ""
+            )
         }
+
+        // Apply filters
+        val activeFilters = filterList.items
+        val filtered = if (activeFilters.isEmpty()) {
+            allMovies
+        } else {
+            allMovies.filter { movie ->
+                // Check if movie matches ANY of the active filters
+                activeFilters.any { filter ->
+                    when (filter) {
+                        FilterCondition.Movies -> movie.category == "movie" || movie.category == "vod"
+                        FilterCondition.TvShows -> movie.category == "series"
+                        FilterCondition.LiveTv -> movie.category == "live"
+                        else -> true
+                    }
+                }
+            }
+        }
+        
         FavouriteScreenUiState.Ready(filtered, filterList)
     }.stateIn(
         scope = viewModelScope,
@@ -62,8 +91,7 @@ class FavouriteScreenViewModel @Inject constructor(
             listOf(
                 FilterCondition.Movies,
                 FilterCondition.TvShows,
-                FilterCondition.AddedLastWeek,
-                FilterCondition.AvailableIn4K
+                FilterCondition.LiveTv
             )
         )
     }
@@ -76,24 +104,11 @@ sealed interface FavouriteScreenUiState {
 }
 
 @Immutable
-data class FilterList(val items: List<FilterCondition> = emptyList()) {
-    fun toIdList(): List<Int> {
-        if (items.isEmpty()) {
-            return FilterCondition.None.idList
-        }
-        return items.asSequence().map {
-            it.idList
-        }.fold(emptyList()) { acc, ints ->
-            acc + ints
-        }
-    }
-}
+data class FilterList(val items: List<FilterCondition> = emptyList())
 
 @Immutable
-enum class FilterCondition(val idList: List<Int>, @StringRes val labelId: Int) {
-    None((0..28).toList(), R.string.favorites_unknown),
-    Movies((0..9).toList(), R.string.favorites_movies),
-    TvShows((10..17).toList(), R.string.favorites_tv_shows),
-    AddedLastWeek((18..23).toList(), R.string.favorites_added_last_week),
-    AvailableIn4K((24..28).toList(), R.string.favorites_available_in_4k),
+enum class FilterCondition(@StringRes val labelId: Int) {
+    Movies(R.string.favorites_movies),
+    TvShows(R.string.favorites_tv_shows),
+    LiveTv(R.string.live) // Reusing "Live" string
 }

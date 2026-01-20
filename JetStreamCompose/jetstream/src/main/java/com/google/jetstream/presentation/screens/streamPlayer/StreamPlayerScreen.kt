@@ -88,6 +88,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.google.jetstream.presentation.common.FavoriteButton
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
 import com.google.jetstream.presentation.screens.videoPlayer.components.rememberVideoPlayerState
 import com.google.jetstream.presentation.utils.handleDPadKeyEvents
@@ -689,7 +690,7 @@ private fun ChannelInfoOverlay(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Favorite button
+                // Favorite button
             Row {
                 if (showPip) {
                     IconButton(onClick = onEnterPip) {
@@ -700,18 +701,10 @@ private fun ChannelInfoOverlay(
                         )
                     }
                 }
-                val favoriteDescription = if (isFavorite) {
-                    "Remove from favorites"
-                } else {
-                    "Add to favorites"
-                }
-                IconButton(onClick = onToggleFavorite) {
-                    Icon(
-                        if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                        contentDescription = favoriteDescription,
-                        tint = if (isFavorite) Color.Red else Color.White
-                    )
-                }
+                FavoriteButton(
+                    isFavorite = isFavorite,
+                    onToggle = onToggleFavorite
+                )
             }
         }
     }

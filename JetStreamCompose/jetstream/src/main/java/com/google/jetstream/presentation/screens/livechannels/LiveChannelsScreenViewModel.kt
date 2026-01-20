@@ -24,6 +24,9 @@ import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.repositories.FavoritesRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.DefaultCountryFilters
+import com.google.jetstream.presentation.utils.categoryIdsForCountry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +40,7 @@ sealed interface LiveChannelsUiState {
     data class Ready(
         val categories: List<XtreamCategory>,
         val channels: List<XtreamChannel>,
-        val selectedCategoryId: String? = null
+        val selectedCountry: CountryFilter
     ) : LiveChannelsUiState
     data class Error(val message: String) : LiveChannelsUiState
 }
@@ -54,6 +57,7 @@ class LiveChannelsScreenViewModel @Inject constructor(
 
     private var allChannels: List<XtreamChannel> = emptyList()
     private var categories: List<XtreamCategory> = emptyList()
+    private val defaultCountry = DefaultCountryFilters.first()
 
     init {
         loadData()
@@ -72,10 +76,11 @@ class LiveChannelsScreenViewModel @Inject constructor(
                     channelsResult is XtreamResult.Success -> {
                     categories = categoriesResult.data
                     allChannels = channelsResult.data
+                    val filteredChannels = filterChannelsByCountry(defaultCountry)
                     _uiState.value = LiveChannelsUiState.Ready(
                         categories = categories,
-                        channels = allChannels,
-                        selectedCategoryId = null
+                        channels = filteredChannels,
+                        selectedCountry = defaultCountry
                     )
                 }
                 categoriesResult is XtreamResult.Error -> {
@@ -91,17 +96,13 @@ class LiveChannelsScreenViewModel @Inject constructor(
         }
     }
 
-    fun selectCategory(categoryId: String?) {
+    fun selectCountry(country: CountryFilter) {
         val currentState = _uiState.value
         if (currentState is LiveChannelsUiState.Ready) {
-            val filteredChannels = if (categoryId == null) {
-                allChannels
-            } else {
-                allChannels.filter { it.categoryId == categoryId }
-            }
+            val filteredChannels = filterChannelsByCountry(country)
             _uiState.value = currentState.copy(
                 channels = filteredChannels,
-                selectedCategoryId = categoryId
+                selectedCountry = country
             )
         }
     }
@@ -116,5 +117,17 @@ class LiveChannelsScreenViewModel @Inject constructor(
 
     fun refresh() {
         loadData()
+    }
+
+    private fun filterChannelsByCountry(country: CountryFilter): List<XtreamChannel> {
+        val categoryIds = categoryIdsForCountry(categories, country)
+        if (categoryIds.isEmpty()) {
+            return emptyList()
+        }
+        return allChannels.filter { channel ->
+            val matchesPrimary = channel.categoryId?.let { categoryIds.contains(it) } == true
+            val matchesAny = channel.categoryIds?.any { categoryIds.contains(it.toString()) } == true
+            matchesPrimary || matchesAny
+        }
     }
 }

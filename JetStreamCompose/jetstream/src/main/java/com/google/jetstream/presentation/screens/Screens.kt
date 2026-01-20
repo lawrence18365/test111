@@ -32,6 +32,8 @@ const val StreamProgramTitleBundleKey = "programTitle"
 const val StreamProgramStartBundleKey = "programStart"
 const val StreamProgramEndBundleKey = "programEnd"
 const val SeriesIdBundleKey = "seriesId"
+const val VodIdBundleKey = "vodId"
+const val SearchQueryBundleKey = "searchQuery"
 
 enum class Screens(
     private val args: List<String>? = null,
@@ -66,7 +68,8 @@ enum class Screens(
             StreamProgramEndBundleKey
         )
     ),
-    SeriesDetail(listOf(SeriesIdBundleKey));
+    SeriesDetail(listOf(SeriesIdBundleKey)),
+    VodDetail(listOf(VodIdBundleKey));
 
     operator fun invoke(): String {
         val argList = StringBuilder()

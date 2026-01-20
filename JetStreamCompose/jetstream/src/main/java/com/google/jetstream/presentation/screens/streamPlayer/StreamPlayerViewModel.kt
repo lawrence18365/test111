@@ -45,38 +45,45 @@ class StreamPlayerViewModel @Inject constructor(
     fun toggleFavorite(streamArgs: StreamPlayerArgs) {
         if (streamArgs.streamId <= 0) return
         viewModelScope.launch {
-            favoritesRepository.toggleFavorite(
+            val fav = com.google.jetstream.data.local.FavoriteChannel(
                 streamId = streamArgs.streamId,
                 name = streamArgs.streamName,
                 streamIcon = streamArgs.streamIcon,
+                categoryId = null, // Not passed in args usually, logic could be improved
                 categoryName = streamArgs.categoryName,
                 streamType = streamArgs.streamType
             )
+            favoritesRepository.toggleFavorite(fav)
         }
     }
 
     fun recordPlaybackStart(streamArgs: StreamPlayerArgs) {
+        // History logic pending implementation of HistoryRepository
+        /*
         if (streamArgs.streamId <= 0) return
         viewModelScope.launch {
-            favoritesRepository.addToHistory(
-                streamId = streamArgs.streamId,
-                name = streamArgs.streamName,
-                streamIcon = streamArgs.streamIcon,
-                streamType = streamArgs.streamType
-            )
+            favoritesRepository.addToHistory(...)
         }
+        */
     }
 
     fun updatePlaybackProgress(streamId: Int, positionMs: Long, durationMs: Long) {
+        // History logic pending implementation of HistoryRepository
+        /*
         if (streamId <= 0 || durationMs <= 0L) return
         viewModelScope.launch {
             favoritesRepository.updatePlaybackProgress(streamId, positionMs, durationMs)
         }
+        */
     }
 
     suspend fun getLastPosition(streamId: Int): Long? {
+        // History logic pending implementation of HistoryRepository
+        return null 
+        /*
         if (streamId <= 0) return null
         return favoritesRepository.getLastPosition(streamId)
+        */
     }
 
     suspend fun buildStreamArgsForChannelNumber(channelNumber: Int): StreamPlayerArgs? {

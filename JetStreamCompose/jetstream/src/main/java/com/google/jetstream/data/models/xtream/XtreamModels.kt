@@ -71,6 +71,8 @@ data class XtreamChannel(
     @SerialName("epg_channel_id") val epgChannelId: String? = null,
     val added: String? = null,
     @SerialName("category_id") val categoryId: String? = null,
+    @SerialName("category_ids") val categoryIds: List<Int>? = null,
+    @SerialName("is_adult") val isAdult: Int? = null,
     @SerialName("custom_sid") val customSid: String? = null,
     @SerialName("tv_archive") val tvArchive: Int? = null,
     @SerialName("direct_source") val directSource: String? = null,
@@ -104,6 +106,45 @@ data class XtreamVodItem(
     @SerialName("container_extension") val containerExtension: String? = null,
     @SerialName("custom_sid") val customSid: String? = null,
     @SerialName("direct_source") val directSource: String? = null
+)
+
+/**
+ * VOD info response from get_vod_info action
+ */
+@Serializable
+data class XtreamVodInfoResponse(
+    val info: XtreamVodInfo? = null,
+    @SerialName("movie_data") val movieData: XtreamVodMovieData? = null
+)
+
+@Serializable
+data class XtreamVodInfo(
+    val name: String? = null,
+    @SerialName("o_name") val originalName: String? = null,
+    @SerialName("cover_big") val coverBig: String? = null,
+    @SerialName("movie_image") val movieImage: String? = null,
+    val plot: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val genre: String? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    val rating: String? = null,
+    @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
+    val duration: String? = null,
+    @SerialName("duration_secs") val durationSecs: Int? = null,
+    val bitrate: Int? = null,
+    @SerialName("backdrop_path") val backdropPath: List<String>? = null,
+    val video: XtreamVideoInfo? = null,
+    val audio: XtreamAudioInfo? = null
+)
+
+@Serializable
+data class XtreamVodMovieData(
+    @SerialName("stream_id") val streamId: Int? = null,
+    val name: String? = null,
+    @SerialName("container_extension") val containerExtension: String? = null,
+    @SerialName("category_id") val categoryId: String? = null,
+    @SerialName("stream_icon") val streamIcon: String? = null
 )
 
 /**
@@ -179,7 +220,24 @@ data class XtreamSeriesDetails(
     @SerialName("backdrop_path") val backdropPath: List<String>? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     @SerialName("episode_run_time") val episodeRunTime: String? = null,
-    @SerialName("category_id") val categoryId: String? = null
+    @SerialName("category_id") val categoryId: String? = null,
+    val video: XtreamVideoInfo? = null,
+    val audio: XtreamAudioInfo? = null
+)
+
+@Serializable
+data class XtreamVideoInfo(
+    val width: Int? = null,
+    val height: Int? = null,
+    @SerialName("codec_name") val codecName: String? = null,
+    @SerialName("codec_long_name") val codecLongName: String? = null
+)
+
+@Serializable
+data class XtreamAudioInfo(
+    val channels: Int? = null,
+    @SerialName("codec_name") val codecName: String? = null,
+    @SerialName("channel_layout") val channelLayout: String? = null
 )
 
 @Serializable

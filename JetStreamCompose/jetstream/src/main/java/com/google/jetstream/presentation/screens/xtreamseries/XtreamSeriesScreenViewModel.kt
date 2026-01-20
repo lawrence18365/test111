@@ -22,6 +22,8 @@ import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.categoryIdsForCountry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,13 +33,11 @@ import kotlinx.coroutines.launch
 
 sealed interface XtreamSeriesUiState {
     data object Loading : XtreamSeriesUiState
-    data class CategoriesLoaded(
-        val categories: List<XtreamCategory>
-    ) : XtreamSeriesUiState
+    data class CountriesLoaded(val categories: List<XtreamCategory>) : XtreamSeriesUiState
     data class Ready(
         val categories: List<XtreamCategory>,
+        val selectedCountry: CountryFilter,
         val seriesList: List<XtreamSeries>,
-        val selectedCategoryId: String?,
         val isLoadingSeries: Boolean = false
     ) : XtreamSeriesUiState
     data class Error(val message: String) : XtreamSeriesUiState
@@ -54,6 +54,7 @@ class XtreamSeriesScreenViewModel @Inject constructor(
     private var categories: List<XtreamCategory> = emptyList()
     // Cache loaded series by category to avoid re-fetching
     private val seriesCache = mutableMapOf<String, List<XtreamSeries>>()
+    private val countryCache = mutableMapOf<CountryFilter, List<XtreamSeries>>()
 
     init {
         loadCategories()
@@ -66,9 +67,7 @@ class XtreamSeriesScreenViewModel @Inject constructor(
             when (val categoriesResult = xtreamRepository.getSeriesCategories()) {
                 is XtreamResult.Success -> {
                     categories = categoriesResult.data
-                    _uiState.value = XtreamSeriesUiState.CategoriesLoaded(
-                        categories = categories
-                    )
+                    _uiState.value = XtreamSeriesUiState.CountriesLoaded(categories = categories)
                 }
                 is XtreamResult.Error -> {
                     _uiState.value = XtreamSeriesUiState.Error(categoriesResult.message)
@@ -80,53 +79,76 @@ class XtreamSeriesScreenViewModel @Inject constructor(
         }
     }
 
-    fun selectCategory(categoryId: String) {
-        // Check cache first
-        seriesCache[categoryId]?.let { cachedItems ->
+    fun selectCountry(country: CountryFilter) {
+        countryCache[country]?.let { cachedItems ->
             _uiState.value = XtreamSeriesUiState.Ready(
                 categories = categories,
-                seriesList = cachedItems,
-                selectedCategoryId = categoryId
+                selectedCountry = country,
+                seriesList = cachedItems
             )
             return
         }
 
-        // Load series for selected category
         viewModelScope.launch {
-            // Show loading state while keeping categories visible
             _uiState.value = XtreamSeriesUiState.Ready(
                 categories = categories,
+                selectedCountry = country,
                 seriesList = emptyList(),
-                selectedCategoryId = categoryId,
                 isLoadingSeries = true
             )
 
-            when (val seriesResult = xtreamRepository.getSeriesByCategory(categoryId)) {
-                is XtreamResult.Success -> {
-                    seriesCache[categoryId] = seriesResult.data
-                    _uiState.value = XtreamSeriesUiState.Ready(
-                        categories = categories,
-                        seriesList = seriesResult.data,
-                        selectedCategoryId = categoryId,
-                        isLoadingSeries = false
-                    )
+            val categoryIds = categoryIdsForCountry(categories, country)
+            if (categoryIds.isEmpty()) {
+                _uiState.value = XtreamSeriesUiState.Ready(
+                    categories = categories,
+                    selectedCountry = country,
+                    seriesList = emptyList(),
+                    isLoadingSeries = false
+                )
+                return@launch
+            }
+
+            val allItems = mutableListOf<XtreamSeries>()
+            for (categoryId in categoryIds) {
+                val cachedItems = seriesCache[categoryId]
+                if (cachedItems != null) {
+                    allItems.addAll(cachedItems)
+                    continue
                 }
-                is XtreamResult.Error -> {
-                    _uiState.value = XtreamSeriesUiState.Error(seriesResult.message)
-                }
-                else -> {
-                    _uiState.value = XtreamSeriesUiState.Error("Failed to load TV shows")
+                when (val seriesResult = xtreamRepository.getSeriesByCategory(categoryId)) {
+                    is XtreamResult.Success -> {
+                        seriesCache[categoryId] = seriesResult.data
+                        allItems.addAll(seriesResult.data)
+                    }
+                    is XtreamResult.Error -> {
+                        _uiState.value = XtreamSeriesUiState.Error(seriesResult.message)
+                        return@launch
+                    }
+                    else -> {
+                        _uiState.value = XtreamSeriesUiState.Error("Failed to load TV shows")
+                        return@launch
+                    }
                 }
             }
+
+            val distinctItems = allItems.distinctBy { it.seriesId }
+            countryCache[country] = distinctItems
+            _uiState.value = XtreamSeriesUiState.Ready(
+                categories = categories,
+                selectedCountry = country,
+                seriesList = distinctItems,
+                isLoadingSeries = false
+            )
         }
     }
 
-    fun goBackToCategories() {
-        _uiState.value = XtreamSeriesUiState.CategoriesLoaded(categories = categories)
+    fun goBackToCountries() {
+        _uiState.value = XtreamSeriesUiState.CountriesLoaded(categories = categories)
     }
 
     fun refresh() {
         seriesCache.clear()
+        countryCache.clear()
         loadCategories()
     }
 }

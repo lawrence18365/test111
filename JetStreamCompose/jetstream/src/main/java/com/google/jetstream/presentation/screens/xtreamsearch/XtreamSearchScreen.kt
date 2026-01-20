@@ -61,9 +61,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.foundation.lazy.grid.TvGridCells
-import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
-import androidx.tv.foundation.lazy.grid.items
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
 import androidx.tv.material3.Border
@@ -76,6 +73,7 @@ import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
 import kotlinx.coroutines.launch
@@ -84,8 +82,9 @@ import kotlinx.coroutines.launch
 @Composable
 fun XtreamSearchScreen(
     onChannelSelected: (StreamPlayerArgs) -> Unit,
-    onVodSelected: (StreamPlayerArgs) -> Unit,
+    onVodSelected: (XtreamVodItem) -> Unit,
     onSeriesSelected: (series: com.google.jetstream.data.models.xtream.XtreamSeries) -> Unit,
+    initialQuery: String? = null,
     viewModel: XtreamSearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -94,6 +93,12 @@ fun XtreamSearchScreen(
 
     LaunchedEffect(Unit) {
         searchFocusRequester.requestFocus()
+    }
+
+    LaunchedEffect(initialQuery) {
+        if (!initialQuery.isNullOrBlank() && initialQuery != uiState.query) {
+            viewModel.updateQuery(initialQuery)
+        }
     }
 
     Column(
@@ -260,7 +265,7 @@ fun XtreamSearchScreen(
             }
 
             uiState.query.isEmpty() -> {
-                // Show search hints
+                // ... (keep existing hint logic)
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -280,7 +285,7 @@ fun XtreamSearchScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Type at least 2 characters to search",
+                            text = "Type at least 3 characters to search",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                         )
@@ -288,7 +293,7 @@ fun XtreamSearchScreen(
                 }
             }
 
-            uiState.results.isEmpty() && uiState.query.length >= 2 -> {
+            !uiState.hasResults && uiState.query.length >= 3 -> {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -309,28 +314,21 @@ fun XtreamSearchScreen(
             }
 
             else -> {
-                // Results count
-                Text(
-                    text = "${uiState.results.size} results for \"${uiState.query}\"",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // Results grid
-                TvLazyVerticalGrid(
-                    columns = TvGridCells.Fixed(5),
+                // Results
+                androidx.tv.foundation.lazy.list.TvLazyColumn(
                     contentPadding = PaddingValues(bottom = 24.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    items(uiState.results) { result ->
-                        SearchResultCard(
-                            result = result,
-                            onClick = {
-                                coroutineScope.launch {
-                                    when (result) {
-                                        is SearchResult.Channel -> {
+                    // Live TV Results
+                    if (uiState.liveResults.isNotEmpty()) {
+                        item {
+                            SearchResultSection(
+                                title = "Live TV",
+                                count = uiState.liveResults.size,
+                                results = uiState.liveResults,
+                                onClick = { result ->
+                                    coroutineScope.launch {
+                                        if (result is SearchResult.Channel) {
                                             val url = viewModel.getChannelStreamUrl(result.channel)
                                             if (url != null) {
                                                 onChannelSelected(
@@ -345,29 +343,83 @@ fun XtreamSearchScreen(
                                                 )
                                             }
                                         }
-                                        is SearchResult.Vod -> {
-                                            val url = viewModel.getVodStreamUrl(result.vod)
-                                            if (url != null) {
-                                                onVodSelected(
-                                                    StreamPlayerArgs(
-                                                        streamUrl = url,
-                                                        streamName = result.vod.name,
-                                                        streamId = result.vod.streamId,
-                                                        streamType = StreamTypes.VOD,
-                                                        streamIcon = result.vod.streamIcon
-                                                    )
-                                                )
-                                            }
-                                        }
-                                        is SearchResult.Series -> {
-                                            onSeriesSelected(result.series)
-                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
+                    }
+
+                    // Movie Results
+                    if (uiState.movieResults.isNotEmpty()) {
+                        item {
+                            SearchResultSection(
+                                title = "Movies",
+                                count = uiState.movieResults.size,
+                                results = uiState.movieResults,
+                                onClick = { result ->
+                                    if (result is SearchResult.Vod) {
+                                        onVodSelected(result.vod)
+                                    }
+                                }
+                            )
+                        }
+                    }
+
+                    // Series Results
+                    if (uiState.seriesResults.isNotEmpty()) {
+                        item {
+                            SearchResultSection(
+                                title = "Series",
+                                count = uiState.seriesResults.size,
+                                results = uiState.seriesResults,
+                                onClick = { result ->
+                                    if (result is SearchResult.Series) {
+                                        onSeriesSelected(result.series)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchResultSection(
+    title: String,
+    count: Int,
+    results: List<SearchResult>,
+    onClick: (SearchResult) -> Unit
+) {
+    Column {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "($count found)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+
+        TvLazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
+            items(results) { result ->
+                SearchResultCard(
+                    result = result,
+                    onClick = { onClick(result) }
+                )
             }
         }
     }

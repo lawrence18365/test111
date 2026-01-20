@@ -33,6 +33,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -54,8 +58,10 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
-import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamSeries
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.DefaultCountryFilters
+import com.google.jetstream.presentation.utils.CountryFilterRow
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -68,6 +74,7 @@ fun XtreamSeriesScreen(
 
     when (val state = uiState) {
         is XtreamSeriesUiState.Loading -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -76,7 +83,7 @@ fun XtreamSeriesScreen(
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Loading categories...",
+                        text = "Loading countries...",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -84,6 +91,7 @@ fun XtreamSeriesScreen(
         }
 
         is XtreamSeriesUiState.Error -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -103,8 +111,8 @@ fun XtreamSeriesScreen(
             }
         }
 
-        is XtreamSeriesUiState.CategoriesLoaded -> {
-            // Show category selection grid
+        is XtreamSeriesUiState.CountriesLoaded -> {
+            onScroll(true)
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -116,7 +124,7 @@ fun XtreamSeriesScreen(
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 Text(
-                    text = "Select a category to browse",
+                    text = "Select a country to browse",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -133,16 +141,28 @@ fun XtreamSeriesScreen(
                         )
                     }
                 } else {
+                    val gridState = rememberTvLazyGridState()
+                    val isTopBarVisible by remember {
+                        derivedStateOf {
+                            gridState.firstVisibleItemIndex == 0 &&
+                                gridState.firstVisibleItemScrollOffset < 100
+                        }
+                    }
+                    LaunchedEffect(isTopBarVisible) {
+                        onScroll(isTopBarVisible)
+                    }
+
                     TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(4),
+                        columns = TvGridCells.Fixed(3),
+                        state = gridState,
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        items(state.categories, key = { it.categoryId }) { category ->
-                            SeriesCategoryCard(
-                                category = category,
-                                onClick = { viewModel.selectCategory(category.categoryId) }
+                        items(DefaultCountryFilters, key = { it.name }) { country ->
+                            CountryCard(
+                                country = country,
+                                onClick = { viewModel.selectCountry(country) }
                             )
                         }
                     }
@@ -151,9 +171,20 @@ fun XtreamSeriesScreen(
         }
 
         is XtreamSeriesUiState.Ready -> {
-            // Handle back to go to category selection
+            val gridState = rememberTvLazyGridState()
+            val isTopBarVisible by remember {
+                derivedStateOf {
+                    gridState.firstVisibleItemIndex == 0 &&
+                        gridState.firstVisibleItemScrollOffset < 100
+                }
+            }
+            LaunchedEffect(isTopBarVisible) {
+                onScroll(isTopBarVisible)
+            }
+
+            // Handle back to go to country selection
             BackHandler {
-                viewModel.goBackToCategories()
+                viewModel.goBackToCountries()
             }
 
             Column(
@@ -171,15 +202,19 @@ fun XtreamSeriesScreen(
                         style = MaterialTheme.typography.headlineLarge
                     )
                     Spacer(modifier = Modifier.width(16.dp))
-                    val categoryName = state.categories
-                        .firstOrNull { it.categoryId == state.selectedCategoryId }
-                        ?.categoryName ?: "All"
                     Text(
-                        text = "/ $categoryName",
+                        text = "/ ${state.selectedCountry.displayName}",
                         style = MaterialTheme.typography.titleLarge,
                         color = Color(0xFF00b4d8)
                     )
                 }
+
+                CountryFilterRow(
+                    selectedCountry = state.selectedCountry,
+                    onCountrySelected = { viewModel.selectCountry(it) }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
 
                 if (state.isLoadingSeries) {
                     Box(
@@ -201,7 +236,7 @@ fun XtreamSeriesScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "No TV shows found in this category",
+                            text = "No TV shows found for ${state.selectedCountry.displayName}",
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
@@ -214,6 +249,7 @@ fun XtreamSeriesScreen(
 
                     TvLazyVerticalGrid(
                         columns = TvGridCells.Fixed(5),
+                        state = gridState,
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -233,8 +269,8 @@ fun XtreamSeriesScreen(
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun SeriesCategoryCard(
-    category: XtreamCategory,
+private fun CountryCard(
+    country: CountryFilter,
     onClick: () -> Unit
 ) {
     Card(
@@ -265,7 +301,7 @@ private fun SeriesCategoryCard(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = category.categoryName,
+                text = country.displayName,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 maxLines = 2,

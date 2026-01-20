@@ -29,6 +29,7 @@ import com.google.jetstream.data.models.xtream.XtreamCredentials
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
 import com.google.jetstream.data.models.xtream.XtreamUrlBuilder
+import com.google.jetstream.data.models.xtream.XtreamVodInfoResponse
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.network.XtreamApiService
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -259,6 +260,26 @@ class XtreamRepository @Inject constructor(
                 XtreamResult.Success(response.body() ?: emptyList())
             } else {
                 XtreamResult.Error("Failed to fetch VOD streams", response.code())
+            }
+        } catch (e: Exception) {
+            XtreamResult.Error("Error: ${e.message}")
+        }
+    }
+
+    /**
+     * Get VOD info with metadata
+     */
+    suspend fun getVodInfo(vodId: Int): XtreamResult<XtreamVodInfoResponse> {
+        val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
+        return try {
+            val url = XtreamUrlBuilder.buildApiUrl(
+                creds.serverUrl, creds.username, creds.password, "get_vod_info"
+            ) + "&vod_id=$vodId"
+            val response = apiService.getVodInfo(url)
+            if (response.isSuccessful) {
+                XtreamResult.Success(response.body() ?: XtreamVodInfoResponse())
+            } else {
+                XtreamResult.Error("Failed to fetch VOD info", response.code())
             }
         } catch (e: Exception) {
             XtreamResult.Error("Error: ${e.message}")

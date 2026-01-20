@@ -20,25 +20,44 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.entities.MovieDetails
+import com.google.jetstream.data.local.FavoriteChannel
+import com.google.jetstream.data.repositories.FavoritesRepository
 import com.google.jetstream.data.repositories.MovieRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class MovieDetailsScreenViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    repository: MovieRepository,
+    private val repository: MovieRepository,
+    private val favoritesRepository: FavoritesRepository
 ) : ViewModel() {
-    val uiState = savedStateHandle
-        .getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
+
+    private val movieIdFlow = savedStateHandle.getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
+
+    private val _isFavorite = MutableStateFlow(false)
+    val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()
+
+    val uiState = movieIdFlow
         .map { id ->
             if (id == null) {
                 MovieDetailsScreenUiState.Error
             } else {
                 val details = repository.getMovieDetails(movieId = id)
+                // Check favorite status
+                val streamId = id.toIntOrNull()
+                if (streamId != null) {
+                    favoritesRepository.isFavorite(streamId).collect {
+                        _isFavorite.value = it
+                    }
+                }
                 MovieDetailsScreenUiState.Done(movieDetails = details)
             }
         }.stateIn(
@@ -46,6 +65,21 @@ class MovieDetailsScreenViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = MovieDetailsScreenUiState.Loading
         )
+
+    fun toggleFavorite(movieDetails: MovieDetails) {
+        val streamId = movieDetails.id.toIntOrNull() ?: return
+        val fav = FavoriteChannel(
+            streamId = streamId,
+            name = movieDetails.name,
+            streamIcon = movieDetails.posterUri,
+            categoryId = null, // Category ID often not available in details, nullable
+            categoryName = movieDetails.categories.firstOrNull(),
+            streamType = "movie"
+        )
+        viewModelScope.launch {
+            favoritesRepository.toggleFavorite(fav)
+        }
+    }
 }
 
 sealed class MovieDetailsScreenUiState {

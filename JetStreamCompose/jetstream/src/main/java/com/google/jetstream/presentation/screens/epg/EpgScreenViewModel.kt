@@ -20,8 +20,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.data.models.xtream.XtreamChannel
+import com.google.jetstream.data.repositories.EpgRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
+import com.google.jetstream.presentation.utils.CountryFilter
+import com.google.jetstream.presentation.utils.DefaultCountryFilters
+import com.google.jetstream.presentation.utils.categoryIdsForCountry
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.Calendar
 import javax.inject.Inject
@@ -61,7 +65,7 @@ sealed interface EpgUiState {
     data class Ready(
         val channels: List<EpgChannelWithPrograms>,
         val categories: List<XtreamCategory>,
-        val selectedCategoryId: String? = null,
+        val selectedCountry: CountryFilter,
         val currentTimeSlot: Long = System.currentTimeMillis()
     ) : EpgUiState
     data class Error(val message: String) : EpgUiState
@@ -69,7 +73,8 @@ sealed interface EpgUiState {
 
 @HiltViewModel
 class EpgScreenViewModel @Inject constructor(
-    private val xtreamRepository: XtreamRepository
+    private val xtreamRepository: XtreamRepository,
+    private val epgRepository: EpgRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<EpgUiState>(EpgUiState.Loading)
@@ -78,6 +83,7 @@ class EpgScreenViewModel @Inject constructor(
     private var allChannels: List<XtreamChannel> = emptyList()
     private var categories: List<XtreamCategory> = emptyList()
     private var epgData: Map<Int, List<EpgProgram>> = emptyMap()
+    private val defaultCountry = DefaultCountryFilters.first()
 
     init {
         loadData()
@@ -86,6 +92,9 @@ class EpgScreenViewModel @Inject constructor(
     private fun loadData() {
         viewModelScope.launch {
             _uiState.value = EpgUiState.Loading
+
+            // Trigger background sync
+            epgRepository.syncEpg()
 
             val categoriesResult = xtreamRepository.getLiveCategories()
             val channelsResult = xtreamRepository.getLiveStreams()
@@ -96,10 +105,11 @@ class EpgScreenViewModel @Inject constructor(
                     categories = categoriesResult.data
                     allChannels = channelsResult.data
 
-                    // Generate mock EPG data for demo (real EPG would come from API)
-                    epgData = generateMockEpgData(allChannels)
+                    // Fetch real EPG data
+                    epgData = fetchEpgData(allChannels)
 
-                    val channelsWithPrograms = allChannels.map { channel ->
+                    val filteredChannels = filterChannelsByCountry(defaultCountry)
+                    val channelsWithPrograms = filteredChannels.map { channel ->
                         EpgChannelWithPrograms(
                             channel = channel,
                             programs = epgData[channel.streamId] ?: generateDefaultPrograms()
@@ -109,7 +119,7 @@ class EpgScreenViewModel @Inject constructor(
                     _uiState.value = EpgUiState.Ready(
                         channels = channelsWithPrograms,
                         categories = categories,
-                        selectedCategoryId = null,
+                        selectedCountry = defaultCountry,
                         currentTimeSlot = roundToHalfHour(System.currentTimeMillis())
                     )
                 }
@@ -126,14 +136,51 @@ class EpgScreenViewModel @Inject constructor(
         }
     }
 
-    fun selectCategory(categoryId: String?) {
+    private suspend fun fetchEpgData(channels: List<XtreamChannel>): Map<Int, List<EpgProgram>> {
+        val now = System.currentTimeMillis()
+        val start = now - 24 * 60 * 60 * 1000 // Last 24 hours
+        val end = now + 48 * 60 * 60 * 1000   // Next 48 hours
+
+        // Get all valid EPG IDs from channels
+        val epgIds = channels.mapNotNull { it.epgChannelId }.distinct()
+        
+        if (epgIds.isEmpty()) return emptyMap()
+
+        // Fetch programs for these IDs
+        val entities = epgRepository.getProgramsForChannels(epgIds, start, end)
+        
+        // Group by EPG Channel ID
+        val programsByEpgId = entities.groupBy { it.channelId }
+
+        // Map Stream ID -> Programs
+        return channels.associate { channel ->
+            val channelEpgId = channel.epgChannelId
+            val programEntities = if (channelEpgId != null) {
+                programsByEpgId[channelEpgId] ?: emptyList()
+            } else {
+                emptyList()
+            }
+
+            val programs = programEntities.map { entity ->
+                val isLive = now in entity.startTime until entity.endTime
+                EpgProgram(
+                    title = entity.title,
+                    description = entity.description,
+                    startTime = entity.startTime,
+                    endTime = entity.endTime,
+                    isLive = isLive,
+                    isCatchupAvailable = !isLive && isCatchupAvailable(channel, entity.startTime, entity.endTime)
+                )
+            }
+            
+            channel.streamId to programs
+        }
+    }
+
+    fun selectCountry(country: CountryFilter) {
         val currentState = _uiState.value
         if (currentState is EpgUiState.Ready) {
-            val filteredChannels = if (categoryId == null) {
-                allChannels
-            } else {
-                allChannels.filter { it.categoryId == categoryId }
-            }
+            val filteredChannels = filterChannelsByCountry(country)
 
             val channelsWithPrograms = filteredChannels.map { channel ->
                 EpgChannelWithPrograms(
@@ -144,7 +191,7 @@ class EpgScreenViewModel @Inject constructor(
 
             _uiState.value = currentState.copy(
                 channels = channelsWithPrograms,
-                selectedCategoryId = categoryId
+                selectedCountry = country
             )
         }
     }
@@ -182,6 +229,18 @@ class EpgScreenViewModel @Inject constructor(
         )
     }
 
+    private fun filterChannelsByCountry(country: CountryFilter): List<XtreamChannel> {
+        val categoryIds = categoryIdsForCountry(categories, country)
+        if (categoryIds.isEmpty()) {
+            return emptyList()
+        }
+        return allChannels.filter { channel ->
+            val matchesPrimary = channel.categoryId?.let { categoryIds.contains(it) } == true
+            val matchesAny = channel.categoryIds?.any { categoryIds.contains(it.toString()) } == true
+            matchesPrimary || matchesAny
+        }
+    }
+
     private fun roundToHalfHour(time: Long): Long {
         val calendar = Calendar.getInstance().apply { timeInMillis = time }
         val minute = calendar.get(Calendar.MINUTE)
@@ -189,43 +248,6 @@ class EpgScreenViewModel @Inject constructor(
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         return calendar.timeInMillis
-    }
-
-    private fun generateMockEpgData(channels: List<XtreamChannel>): Map<Int, List<EpgProgram>> {
-        val now = System.currentTimeMillis()
-        val programTitles = listOf(
-            "Morning News", "Talk Show", "Documentary", "Sports Center",
-            "Movie Premiere", "Comedy Hour", "Drama Series", "Reality TV",
-            "News Update", "Music Show", "Kids Zone", "Cooking Show",
-            "Travel Adventure", "Science Today", "Game Show", "Late Night"
-        )
-
-        return channels.associate { channel ->
-            val programs = mutableListOf<EpgProgram>()
-            var startTime = roundToHalfHour(now) - 2 * 60 * 60 * 1000 // Start 2 hours ago
-
-            repeat(12) { index ->
-                val duration = listOf(30, 60, 90, 120).random() * 60 * 1000L
-                val endTime = startTime + duration
-                val isLive = now in startTime until endTime
-                val isCatchupAvailable = !isLive && isCatchupAvailable(channel, startTime, endTime)
-
-                programs.add(
-                    EpgProgram(
-                        title = programTitles.random(),
-                        description = "Episode ${index + 1} - ${channel.name}",
-                        startTime = startTime,
-                        endTime = endTime,
-                        isLive = isLive,
-                        isCatchupAvailable = isCatchupAvailable
-                    )
-                )
-
-                startTime = endTime
-            }
-
-            channel.streamId to programs
-        }
     }
 
     private fun generateDefaultPrograms(): List<EpgProgram> {

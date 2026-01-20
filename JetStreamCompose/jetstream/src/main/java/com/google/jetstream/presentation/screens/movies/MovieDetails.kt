@@ -56,6 +56,7 @@ import coil.request.ImageRequest
 import com.google.jetstream.R
 import com.google.jetstream.data.entities.MovieDetails
 import com.google.jetstream.data.util.StringConstants
+import com.google.jetstream.presentation.common.FavoriteButton
 import com.google.jetstream.presentation.screens.dashboard.rememberChildPadding
 import com.google.jetstream.presentation.theme.JetStreamButtonShape
 import kotlinx.coroutines.launch
@@ -64,6 +65,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun MovieDetails(
     movieDetails: MovieDetails,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     goToMoviePlayer: (String) -> Unit
 ) {
     val childPadding = rememberChildPadding()
@@ -107,14 +110,25 @@ fun MovieDetails(
                         music = movieDetails.music
                     )
                 }
-                WatchTrailerButton(
-                    modifier = Modifier.onFocusChanged {
-                        if (it.isFocused) {
-                            coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
-                        }
-                    },
-                    goToMoviePlayer = { goToMoviePlayer(movieDetails.id) }
-                )
+                
+                Row(
+                    modifier = Modifier.padding(top = 24.dp),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    WatchTrailerButton(
+                        modifier = Modifier.onFocusChanged {
+                            if (it.isFocused) {
+                                coroutineScope.launch { bringIntoViewRequester.bringIntoView() }
+                            }
+                        },
+                        goToMoviePlayer = { goToMoviePlayer(movieDetails.id) }
+                    )
+                    Spacer(modifier = Modifier.size(16.dp))
+                    FavoriteButton(
+                        isFavorite = isFavorite,
+                        onToggle = onToggleFavorite
+                    )
+                }
             }
         }
     }

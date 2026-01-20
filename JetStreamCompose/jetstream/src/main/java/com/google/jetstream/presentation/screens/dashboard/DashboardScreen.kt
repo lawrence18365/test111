@@ -58,6 +58,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.google.jetstream.data.entities.Movie
 import com.google.jetstream.presentation.screens.Screens
+import com.google.jetstream.presentation.screens.SearchQueryBundleKey
 import com.google.jetstream.presentation.screens.categories.CategoriesScreen
 import com.google.jetstream.presentation.screens.epg.EpgScreen
 import com.google.jetstream.presentation.screens.favourites.FavouritesScreen
@@ -67,8 +68,10 @@ import com.google.jetstream.presentation.screens.profile.ProfileScreen
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.xtreamsearch.XtreamSearchScreen
 import com.google.jetstream.presentation.screens.xtreamseries.XtreamSeriesScreen
+import com.google.jetstream.presentation.screens.xtreamvod.XtreamVodDetailScreen
 import com.google.jetstream.presentation.screens.xtreamvod.XtreamVodScreen
 import com.google.jetstream.presentation.utils.Padding
+import com.google.jetstream.presentation.screens.seriesdetail.SeriesDetailScreen
 
 val ParentPadding = PaddingValues(vertical = 16.dp, horizontal = 58.dp)
 
@@ -104,7 +107,9 @@ fun DashboardScreen(
     var currentDestination: String? by remember { mutableStateOf(null) }
     val currentTopBarSelectedTabIndex by remember(currentDestination) {
         derivedStateOf {
-            currentDestination?.let { TopBarTabs.indexOf(Screens.valueOf(it)) } ?: 0
+            val route = currentDestination?.substringBefore("/") ?: return@derivedStateOf 0
+            val screen = Screens.values().firstOrNull { it.name == route } ?: return@derivedStateOf 0
+            TopBarTabs.indexOf(screen).takeIf { it >= 0 } ?: 0
         }
     }
 
@@ -247,12 +252,14 @@ private fun Body(
         }
         composable(Screens.LiveChannels()) {
             LiveChannelsScreen(
-                onChannelSelected = openStreamPlayer
+                onChannelSelected = openStreamPlayer,
+                onScroll = updateTopBarVisibility
             )
         }
         composable(Screens.TvGuide()) {
             EpgScreen(
-                onChannelSelected = openStreamPlayer
+                onChannelSelected = openStreamPlayer,
+                onScroll = updateTopBarVisibility
             )
         }
         composable(Screens.Home()) {
@@ -271,16 +278,19 @@ private fun Body(
                 onScroll = updateTopBarVisibility
             )
         }
+
         composable(Screens.Movies()) {
             XtreamVodScreen(
-                onVodSelected = openStreamPlayer,
+                onVodSelected = { vod ->
+                    navController.navigate(Screens.VodDetail.withArgs(vod.streamId))
+                },
                 onScroll = updateTopBarVisibility
             )
         }
         composable(Screens.Shows()) {
             XtreamSeriesScreen(
                 onSeriesSelected = { series ->
-                    // For now, just show series info - full episode selection would require more work
+                    navController.navigate(Screens.SeriesDetail.withArgs(series.seriesId))
                 },
                 onScroll = updateTopBarVisibility
             )
@@ -292,11 +302,49 @@ private fun Body(
                 isTopBarVisible = isTopBarVisible
             )
         }
-        composable(Screens.Search()) {
+        composable(Screens.Search()) { backStackEntry ->
+            val initialQuery = backStackEntry.savedStateHandle.get<String>(SearchQueryBundleKey)
+            LaunchedEffect(initialQuery) {
+                if (!initialQuery.isNullOrBlank()) {
+                    backStackEntry.savedStateHandle.remove<String>(SearchQueryBundleKey)
+                }
+            }
             XtreamSearchScreen(
                 onChannelSelected = openStreamPlayer,
-                onVodSelected = openStreamPlayer,
-                onSeriesSelected = { },
+                onVodSelected = { vod ->
+                    navController.navigate(Screens.VodDetail.withArgs(vod.streamId))
+                },
+                onSeriesSelected = { series ->
+                    navController.navigate(Screens.SeriesDetail.withArgs(series.seriesId))
+                },
+                initialQuery = initialQuery
+            )
+        }
+        composable(Screens.VodDetail()) {
+            XtreamVodDetailScreen(
+                onPlaySelected = openStreamPlayer,
+                onCastSelected = { query ->
+                    navController.navigate(Screens.Search()) {
+                        launchSingleTop = true
+                    }
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(SearchQueryBundleKey, query)
+                }
+            )
+        }
+        composable(Screens.SeriesDetail()) {
+            SeriesDetailScreen(
+                onEpisodeSelected = openStreamPlayer,
+                onBackPressed = { navController.navigateUp() },
+                onCastSelected = { query ->
+                    navController.navigate(Screens.Search()) {
+                        launchSingleTop = true
+                    }
+                    navController.currentBackStackEntry
+                        ?.savedStateHandle
+                        ?.set(SearchQueryBundleKey, query)
+                }
             )
         }
     }

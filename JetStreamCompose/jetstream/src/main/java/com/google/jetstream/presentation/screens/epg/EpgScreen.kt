@@ -40,7 +40,9 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,20 +62,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
+import androidx.tv.foundation.lazy.list.rememberTvLazyListState
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.FilterChip
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
-import com.google.jetstream.data.models.xtream.XtreamCategory
 import com.google.jetstream.presentation.screens.streamPlayer.StreamPlayerArgs
 import com.google.jetstream.presentation.screens.streamPlayer.StreamTypes
+import com.google.jetstream.presentation.utils.CountryFilterRow
+import com.google.jetstream.presentation.utils.focusBorderStroke
+import com.google.jetstream.presentation.utils.headerBackdropBrush
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -86,6 +90,7 @@ private val EpgCardShape = RoundedCornerShape(10.dp)
 @Composable
 fun EpgScreen(
     onChannelSelected: (StreamPlayerArgs) -> Unit,
+    onScroll: (isTopBarVisible: Boolean) -> Unit = {},
     viewModel: EpgScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -93,6 +98,7 @@ fun EpgScreen(
 
     when (val state = uiState) {
         is EpgUiState.Loading -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -109,6 +115,7 @@ fun EpgScreen(
         }
 
         is EpgUiState.Error -> {
+            onScroll(true)
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -129,76 +136,95 @@ fun EpgScreen(
         }
 
         is EpgUiState.Ready -> {
+            val listState = rememberTvLazyListState()
+            val isTopBarVisible by remember {
+                derivedStateOf {
+                    listState.firstVisibleItemIndex == 0 &&
+                        listState.firstVisibleItemScrollOffset < 50
+                }
+            }
+
+            LaunchedEffect(isTopBarVisible) {
+                onScroll(isTopBarVisible)
+            }
+
+            val headerBrush = headerBackdropBrush()
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 32.dp, vertical = 16.dp)
             ) {
-                // Header with time navigation
-                EpgHeader(
-                    currentTimeSlot = state.currentTimeSlot,
-                    onNavigateBack = { viewModel.navigateTime(false) },
-                    onNavigateForward = { viewModel.navigateTime(true) },
-                    onGoToNow = { viewModel.goToNow() }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Category filters
-                if (state.categories.isNotEmpty()) {
-                    EpgCategoryRow(
-                        categories = state.categories,
-                        selectedCategoryId = state.selectedCategoryId,
-                        onCategorySelected = { viewModel.selectCategory(it) }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(headerBrush)
+                        .padding(bottom = 8.dp)
+                ) {
+                    // Header with time navigation
+                    EpgHeader(
+                        currentTimeSlot = state.currentTimeSlot,
+                        onNavigateBack = { viewModel.navigateTime(false) },
+                        onNavigateForward = { viewModel.navigateTime(true) },
+                        onGoToNow = { viewModel.goToNow() },
+                        isCompact = !isTopBarVisible
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Countries",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
+                    CountryFilterRow(
+                        selectedCountry = state.selectedCountry,
+                        onCountrySelected = { viewModel.selectCountry(it) }
+                    )
+
+                    Text(
+                        text = "${state.selectedCountry.displayName} · " +
+                            "${state.channels.size} channels",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
 
                 // Time slots header
                 TimeSlotHeader(currentTimeSlot = state.currentTimeSlot)
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Channel list with programs
-                TvLazyColumn(
-                    contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    items(state.channels, key = { it.channel.streamId }) { channelWithPrograms ->
-                        val channel = channelWithPrograms.channel
-                        val categoryId = channel.categoryId
-                        EpgChannelRow(
-                            channelWithPrograms = channelWithPrograms,
-                            currentTimeSlot = state.currentTimeSlot,
-                            onChannelClick = {
-                                coroutineScope.launch {
-                                    val streamUrl = viewModel.getStreamUrl(channel)
-                                    if (streamUrl != null) {
-                                        val categoryName = state.categories
-                                            .firstOrNull { it.categoryId == categoryId }
-                                            ?.categoryName
-                                        onChannelSelected(
-                                            StreamPlayerArgs(
-                                                streamUrl = streamUrl,
-                                                streamName = channel.name,
-                                                streamId = channel.streamId,
-                                                streamType = StreamTypes.LIVE,
-                                                streamIcon = channel.streamIcon,
-                                                categoryName = categoryName,
-                                                channelNumber = channel.num
-                                            )
-                                        )
-                                    }
-                                }
-                            },
-                            onProgramClick = { program ->
-                                coroutineScope.launch {
-                                    val categoryName = state.categories
-                                        .firstOrNull { it.categoryId == categoryId }
-                                        ?.categoryName
-                                    if (program.isLive) {
+                if (state.channels.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "No channels found for ${state.selectedCountry.displayName}",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                } else {
+                    // Channel list with programs
+                    TvLazyColumn(
+                        state = listState,
+                        contentPadding = PaddingValues(bottom = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.channels, key = { it.channel.streamId }) { channelWithPrograms ->
+                            val channel = channelWithPrograms.channel
+                            val categoryId = channel.categoryId
+                            EpgChannelRow(
+                                channelWithPrograms = channelWithPrograms,
+                                currentTimeSlot = state.currentTimeSlot,
+                                onChannelClick = {
+                                    coroutineScope.launch {
                                         val streamUrl = viewModel.getStreamUrl(channel)
                                         if (streamUrl != null) {
+                                            val categoryName = state.categories
+                                                .firstOrNull { it.categoryId == categoryId }
+                                                ?.categoryName
                                             onChannelSelected(
                                                 StreamPlayerArgs(
                                                     streamUrl = streamUrl,
@@ -207,38 +233,61 @@ fun EpgScreen(
                                                     streamType = StreamTypes.LIVE,
                                                     streamIcon = channel.streamIcon,
                                                     categoryName = categoryName,
-                                                    channelNumber = channel.num,
-                                                    programTitle = program.title,
-                                                    programStart = program.startTime,
-                                                    programEnd = program.endTime
-                                                )
-                                            )
-                                        }
-                                    } else if (program.isCatchupAvailable) {
-                                        val streamUrl = viewModel.getCatchupStreamUrl(
-                                            channelWithPrograms.channel,
-                                            program
-                                        )
-                                        if (streamUrl != null) {
-                                            onChannelSelected(
-                                                StreamPlayerArgs(
-                                                    streamUrl = streamUrl,
-                                                    streamName = channel.name,
-                                                    streamId = channel.streamId,
-                                                    streamType = StreamTypes.CATCHUP,
-                                                    streamIcon = channel.streamIcon,
-                                                    categoryName = categoryName,
-                                                    channelNumber = channel.num,
-                                                    programTitle = program.title,
-                                                    programStart = program.startTime,
-                                                    programEnd = program.endTime
+                                                    channelNumber = channel.num
                                                 )
                                             )
                                         }
                                     }
+                                },
+                                onProgramClick = { program ->
+                                    coroutineScope.launch {
+                                        val categoryName = state.categories
+                                            .firstOrNull { it.categoryId == categoryId }
+                                            ?.categoryName
+                                        if (program.isLive) {
+                                            val streamUrl = viewModel.getStreamUrl(channel)
+                                            if (streamUrl != null) {
+                                                onChannelSelected(
+                                                    StreamPlayerArgs(
+                                                        streamUrl = streamUrl,
+                                                        streamName = channel.name,
+                                                        streamId = channel.streamId,
+                                                        streamType = StreamTypes.LIVE,
+                                                        streamIcon = channel.streamIcon,
+                                                        categoryName = categoryName,
+                                                        channelNumber = channel.num,
+                                                        programTitle = program.title,
+                                                        programStart = program.startTime,
+                                                        programEnd = program.endTime
+                                                    )
+                                                )
+                                            }
+                                        } else if (program.isCatchupAvailable) {
+                                            val streamUrl = viewModel.getCatchupStreamUrl(
+                                                channelWithPrograms.channel,
+                                                program
+                                            )
+                                            if (streamUrl != null) {
+                                                onChannelSelected(
+                                                    StreamPlayerArgs(
+                                                        streamUrl = streamUrl,
+                                                        streamName = channel.name,
+                                                        streamId = channel.streamId,
+                                                        streamType = StreamTypes.CATCHUP,
+                                                        streamIcon = channel.streamIcon,
+                                                        categoryName = categoryName,
+                                                        channelNumber = channel.num,
+                                                        programTitle = program.title,
+                                                        programStart = program.startTime,
+                                                        programEnd = program.endTime
+                                                    )
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
@@ -252,10 +301,16 @@ private fun EpgHeader(
     currentTimeSlot: Long,
     onNavigateBack: () -> Unit,
     onNavigateForward: () -> Unit,
-    onGoToNow: () -> Unit
+    onGoToNow: () -> Unit,
+    isCompact: Boolean
 ) {
     val dateFormat = remember { SimpleDateFormat("EEEE, MMMM d", Locale.getDefault()) }
     val timeFormat = remember { SimpleDateFormat("h:mm a", Locale.getDefault()) }
+    val titleStyle = if (isCompact) {
+        MaterialTheme.typography.titleLarge
+    } else {
+        MaterialTheme.typography.headlineLarge
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -265,14 +320,16 @@ private fun EpgHeader(
         Column {
             Text(
                 text = "TV Guide",
-                style = MaterialTheme.typography.headlineLarge,
+                style = titleStyle,
                 fontWeight = FontWeight.Bold
             )
-            Text(
-                text = dateFormat.format(Date(currentTimeSlot)),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
+            if (!isCompact) {
+                Text(
+                    text = dateFormat.format(Date(currentTimeSlot)),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+            }
         }
 
         Row(
@@ -284,7 +341,7 @@ private fun EpgHeader(
                 Icon(
                     Icons.Default.ChevronLeft,
                     contentDescription = "Previous time",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(if (isCompact) 28.dp else 32.dp)
                 )
             }
 
@@ -296,19 +353,26 @@ private fun EpgHeader(
                 )
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = Modifier.padding(
+                        horizontal = if (isCompact) 12.dp else 16.dp,
+                        vertical = if (isCompact) 6.dp else 8.dp
+                    ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         Icons.Default.Schedule,
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(if (isCompact) 18.dp else 20.dp),
                         tint = Color.White
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = timeFormat.format(Date(currentTimeSlot)),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = if (isCompact) {
+                            MaterialTheme.typography.bodyMedium
+                        } else {
+                            MaterialTheme.typography.titleMedium
+                        },
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -320,42 +384,7 @@ private fun EpgHeader(
                 Icon(
                     Icons.Default.ChevronRight,
                     contentDescription = "Next time",
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun EpgCategoryRow(
-    categories: List<XtreamCategory>,
-    selectedCategoryId: String?,
-    onCategorySelected: (String?) -> Unit
-) {
-    TvLazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(vertical = 4.dp)
-    ) {
-        item {
-            FilterChip(
-                selected = selectedCategoryId == null,
-                onClick = { onCategorySelected(null) }
-            ) {
-                Text("All Channels")
-            }
-        }
-
-        items(categories, key = { it.categoryId }) { category ->
-            FilterChip(
-                selected = selectedCategoryId == category.categoryId,
-                onClick = { onCategorySelected(category.categoryId) }
-            ) {
-                Text(
-                    text = category.categoryName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    modifier = Modifier.size(if (isCompact) 28.dp else 32.dp)
                 )
             }
         }
@@ -370,7 +399,8 @@ private fun TimeSlotHeader(currentTimeSlot: Long) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 140.dp) // Offset for channel column
+            .background(MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp))
+            .padding(start = 140.dp, top = 4.dp, bottom = 4.dp)
     ) {
         // Show 4 time slots (2 hours)
         repeat(4) { index ->
@@ -408,11 +438,11 @@ private fun EpgChannelRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(72.dp),
+            .height(86.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val channelContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        val channelFocusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+        val channelContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp)
+        val channelFocusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(5.dp)
         // Channel info (fixed width)
         Card(
             onClick = onChannelClick,
@@ -425,11 +455,11 @@ private fun EpgChannelRow(
             ),
             border = CardDefaults.border(
                 focusedBorder = Border(
-                    border = BorderStroke(1.dp, EpgAccentColor.copy(alpha = 0.35f)),
+                    border = focusBorderStroke(EpgAccentColor.copy(alpha = 0.6f)),
                     shape = EpgCardShape
                 )
             ),
-            scale = CardDefaults.scale(focusedScale = 1.02f),
+            scale = CardDefaults.scale(focusedScale = 1.015f),
             shape = CardDefaults.shape(shape = EpgCardShape)
         ) {
             Row(
@@ -453,7 +483,7 @@ private fun EpgChannelRow(
 
                 Text(
                     text = channelWithPrograms.channel.name,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -467,7 +497,7 @@ private fun EpgChannelRow(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             visiblePrograms.forEach { program ->
                 val programWeight = calculateProgramWeight(
@@ -539,11 +569,11 @@ private fun EpgProgramCard(
         ),
         border = CardDefaults.border(
             focusedBorder = Border(
-                border = BorderStroke(1.dp, EpgAccentColor.copy(alpha = 0.35f)),
+                border = focusBorderStroke(EpgAccentColor.copy(alpha = 0.6f)),
                 shape = EpgCardShape
             )
         ),
-        scale = CardDefaults.scale(focusedScale = 1.03f),
+        scale = CardDefaults.scale(focusedScale = 1.02f),
         shape = CardDefaults.shape(shape = EpgCardShape)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -561,10 +591,10 @@ private fun EpgProgramCard(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(
-                        start = if (program.isLive) 12.dp else 8.dp,
-                        top = 8.dp,
-                        end = 8.dp,
-                        bottom = 8.dp
+                        start = if (program.isLive) 12.dp else 10.dp,
+                        top = 10.dp,
+                        end = 10.dp,
+                        bottom = 10.dp
                     ),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -613,7 +643,7 @@ private fun EpgProgramCard(
                     // Program title
                     Text(
                         text = program.title,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis

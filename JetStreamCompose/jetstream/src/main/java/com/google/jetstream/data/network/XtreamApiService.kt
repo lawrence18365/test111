@@ -22,6 +22,7 @@ import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.models.xtream.XtreamEpgListing
 import com.google.jetstream.data.models.xtream.XtreamSeries
 import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
+import com.google.jetstream.data.models.xtream.XtreamVodInfoResponse
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import retrofit2.Response
 import retrofit2.http.GET
@@ -96,6 +97,15 @@ interface XtreamApiService {
     suspend fun getVodStreamsByCategory(
         @Url url: String
     ): Response<List<XtreamVodItem>>
+
+    /**
+     * Get VOD info with metadata
+     * URL: /player_api.php?username=X&password=X&action=get_vod_info&vod_id=X
+     */
+    @GET
+    suspend fun getVodInfo(
+        @Url url: String
+    ): Response<XtreamVodInfoResponse>
 
     /**
      * Get series categories

@@ -45,6 +45,7 @@ import androidx.tv.material3.OutlinedButton
 import androidx.tv.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -94,6 +95,18 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
+            val textFieldColors = TextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFF1b263b),
+                unfocusedContainerColor = Color(0xFF1b263b),
+                disabledContainerColor = Color(0xFF1b263b),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color(0xFF00b4d8),
+                focusedIndicatorColor = Color(0xFF00b4d8),
+                unfocusedIndicatorColor = Color.White.copy(alpha = 0.3f),
+                placeholderColor = Color.White.copy(alpha = 0.6f)
+            )
+
             // App Title
             Text(
                 text = "IPTV Player",
@@ -112,15 +125,22 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // Server URL Field
+            Text(
+                text = "Server URL",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             TextField(
                 value = serverUrl,
                 onValueChange = { serverUrl = it },
-                label = { Text("Server URL") },
                 placeholder = { Text("http://example.com:8080") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(serverFocusRequester),
+                colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Uri,
                     imeAction = ImeAction.Next
@@ -133,12 +153,20 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Username Field
+            Text(
+                text = "Username",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             TextField(
                 value = username,
                 onValueChange = { username = it },
-                label = { Text("Username") },
+                placeholder = { Text("Your username") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Next
@@ -151,12 +179,20 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Password Field
+            Text(
+                text = "Password",
+                style = MaterialTheme.typography.titleSmall,
+                color = Color.White.copy(alpha = 0.85f),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             TextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Password") },
+                placeholder = { Text("Your password") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
                 visualTransformation = if (showPassword) {
                     VisualTransformation.None
                 } else {

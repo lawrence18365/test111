@@ -169,7 +169,8 @@ class EpgScreenViewModel @Inject constructor(
                     startTime = entity.startTime,
                     endTime = entity.endTime,
                     isLive = isLive,
-                    isCatchupAvailable = !isLive && isCatchupAvailable(channel, entity.startTime, entity.endTime)
+                    isCatchupAvailable = !isLive && 
+                        isCatchupAvailable(channel, entity.startTime, entity.endTime)
                 )
             }
             

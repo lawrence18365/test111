@@ -29,7 +29,8 @@ class EpgSyncWorker @AssistedInject constructor(
     private val okHttpClient: OkHttpClient
 ) : CoroutineWorker(appContext, workerParams) {
 
-    private val epgUrl = "https://raw.githubusercontent.com/iptv-org/epg/master.xml" // Placeholder URL, user should update
+    private val epgUrl = 
+        "https://raw.githubusercontent.com/iptv-org/epg/master.xml" // Placeholder URL
     private val forbiddenKeywords = listOf("Adult", "XXX", "Porn")
     private val dateFormat = SimpleDateFormat("yyyyMMddHHmmss Z", Locale.getDefault())
 

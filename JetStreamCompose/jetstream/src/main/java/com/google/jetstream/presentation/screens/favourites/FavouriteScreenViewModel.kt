@@ -51,7 +51,8 @@ class FavouriteScreenViewModel @Inject constructor(
                 posterUri = fav.streamIcon ?: "",
                 name = fav.name,
                 description = fav.categoryName ?: "",
-                category = fav.streamType, // Use category field to store streamType for filtering if needed
+                // Use category field to store streamType for filtering
+                category = fav.streamType, 
                 language = "",
                 format = ""
             )

@@ -24,7 +24,11 @@ interface EpgDao {
         AND startTime < :endTime
         ORDER BY startTime ASC
     """)
-    suspend fun getProgramsForChannel(channelId: String, startTime: Long, endTime: Long): List<EpgProgramEntity>
+    suspend fun getProgramsForChannel(
+        channelId: String,
+        startTime: Long,
+        endTime: Long
+    ): List<EpgProgramEntity>
 
     @Transaction
     @Query("""
@@ -34,7 +38,11 @@ interface EpgDao {
         AND startTime < :endTime
         ORDER BY startTime ASC
     """)
-    suspend fun getProgramsForChannels(channelIds: List<String>, startTime: Long, endTime: Long): List<EpgProgramEntity>
+    suspend fun getProgramsForChannels(
+        channelIds: List<String>,
+        startTime: Long,
+        endTime: Long
+    ): List<EpgProgramEntity>
 
     @Query("DELETE FROM epg_channels")
     suspend fun deleteAllChannels()

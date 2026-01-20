@@ -40,7 +40,8 @@ class MovieDetailsScreenViewModel @Inject constructor(
     private val favoritesRepository: FavoritesRepository
 ) : ViewModel() {
 
-    private val movieIdFlow = savedStateHandle.getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
+    private val movieIdFlow = savedStateHandle
+        .getStateFlow<String?>(MovieDetailsScreen.MovieIdBundleKey, null)
 
     private val _isFavorite = MutableStateFlow(false)
     val isFavorite: StateFlow<Boolean> = _isFavorite.asStateFlow()

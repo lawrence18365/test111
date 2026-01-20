@@ -122,7 +122,9 @@ fun LoginScreen(
                 cursorColor = Color(0xFF00b4d8),
                 focusedIndicatorColor = Color(0xFF00b4d8),
                 unfocusedIndicatorColor = Color.White.copy(alpha = 0.3f),
-                placeholderColor = Color.White.copy(alpha = 0.6f)
+                focusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                unfocusedPlaceholderColor = Color.White.copy(alpha = 0.6f),
+                disabledPlaceholderColor = Color.White.copy(alpha = 0.6f)
             )
 
             // App Title

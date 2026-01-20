@@ -189,9 +189,6 @@ fun App(
                     openStreamPlayer = { streamArgs ->
                         navController.navigate(streamArgs.toRoute())
                     },
-                    openSeriesDetail = { seriesId ->
-                        navController.navigate(Screens.SeriesDetail.withArgs(seriesId))
-                    },
                     onBackPressed = onBackPressed,
                     isComingBackFromDifferentScreen = isComingBackFromDifferentScreen,
                     resetIsComingBackFromDifferentScreen = {

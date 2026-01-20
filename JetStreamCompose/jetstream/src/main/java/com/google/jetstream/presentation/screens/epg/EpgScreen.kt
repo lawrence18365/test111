@@ -430,7 +430,7 @@ private fun EpgChannelRow(
                 )
             ),
             scale = CardDefaults.scale(focusedScale = 1.02f),
-            shape = EpgCardShape
+            shape = CardDefaults.shape(shape = EpgCardShape)
         ) {
             Row(
                 modifier = Modifier
@@ -544,7 +544,7 @@ private fun EpgProgramCard(
             )
         ),
         scale = CardDefaults.scale(focusedScale = 1.03f),
-        shape = EpgCardShape
+        shape = CardDefaults.shape(shape = EpgCardShape)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (program.isLive) {

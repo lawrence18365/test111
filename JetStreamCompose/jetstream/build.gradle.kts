@@ -72,6 +72,19 @@ android {
 }
 
 dependencies {
+    // ==========================================================
+    //  FIX: MANUALLY ADDED LIBRARIES FOR IPTV FEATURES
+    // ==========================================================
+    // Enables TextFields, Progress Indicators (Standard Material 3)
+    implementation("androidx.compose.material3:material3:1.2.1")
+    // Enables standard Compose interactions (Foundation)
+    implementation("androidx.compose.foundation:foundation:1.6.4")
+    // Ensures generic Material Icons are available
+    implementation("androidx.compose.material:material-icons-extended:1.6.4")
+    // JSON Converter for Xtream Codes Login
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    // ==========================================================
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

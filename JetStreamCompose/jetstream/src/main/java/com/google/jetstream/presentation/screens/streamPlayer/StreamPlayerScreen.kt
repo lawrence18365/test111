@@ -17,7 +17,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,8 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -52,7 +49,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,9 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.media3.common.MediaItem
@@ -77,12 +70,10 @@ import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.tv.material3.ExperimentalTvMaterial3Api
-import androidx.tv.material3.Button
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
-import androidx.compose.material3.TextField
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.jetstream.presentation.screens.videoPlayer.components.VideoPlayerPulse
@@ -106,7 +97,6 @@ fun StreamPlayerScreen(
 ) {
     val context = LocalContext.current
     val viewModel: StreamPlayerViewModel = hiltViewModel()
-    val coroutineScope = rememberCoroutineScope()
     val activity = context as? Activity
     val canEnterPip = activity?.packageManager
         ?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) == true
@@ -119,9 +109,6 @@ fun StreamPlayerScreen(
     }
     val streamType = currentStream.streamType
     val isFavorite by viewModel.isFavorite(currentStream.streamId).collectAsState(initial = false)
-    val parentalEnabled by viewModel.parentalEnabled.collectAsState(initial = false)
-    val isParentalPinSet by viewModel.isParentalPinSet.collectAsState(initial = false)
-
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isBuffering by remember { mutableStateOf(true) }
     var isPlaying by remember { mutableStateOf(true) }
@@ -129,34 +116,6 @@ fun StreamPlayerScreen(
     var showChannelInfo by remember { mutableStateOf(true) }
     var channelInput by remember { mutableStateOf("") }
     var zapFeedback by remember { mutableStateOf<String?>(null) }
-    var isUnlocked by remember { mutableStateOf(false) }
-    var pinEntry by remember { mutableStateOf("") }
-    var pinError by remember { mutableStateOf<String?>(null) }
-    var isVerifyingPin by remember { mutableStateOf(false) }
-
-    val isRestrictedContent = remember(currentStream) { isRestrictedContent(currentStream) }
-    val isPinGateActive = parentalEnabled && isParentalPinSet && isRestrictedContent
-    val isLocked = isPinGateActive && !isUnlocked
-
-    val submitPin = {
-        if (pinEntry.length < 4) {
-            pinError = "Enter a 4-digit PIN"
-        } else if (!isVerifyingPin) {
-            isVerifyingPin = true
-            coroutineScope.launch {
-                val ok = viewModel.verifyParentalPin(pinEntry)
-                isVerifyingPin = false
-                if (ok) {
-                    isUnlocked = true
-                    pinEntry = ""
-                    pinError = null
-                } else {
-                    pinEntry = ""
-                    pinError = "Incorrect PIN"
-                }
-            }
-        }
-    }
 
     val enterPip = {
         if (activity != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -189,12 +148,6 @@ fun StreamPlayerScreen(
         }
     }
 
-    LaunchedEffect(currentStream.streamId) {
-        isUnlocked = false
-        pinEntry = ""
-        pinError = null
-    }
-
     LaunchedEffect(channelInput) {
         if (channelInput.isBlank()) return@LaunchedEffect
         val pendingInput = channelInput
@@ -221,15 +174,6 @@ fun StreamPlayerScreen(
         if (zapFeedback == null) return@LaunchedEffect
         delay(1500)
         zapFeedback = null
-    }
-
-    LaunchedEffect(isLocked) {
-        if (isLocked) {
-            channelInput = ""
-            exoPlayer.pause()
-        } else if (isPinGateActive && !exoPlayer.isPlaying) {
-            exoPlayer.play()
-        }
     }
 
     // Player event listener
@@ -320,38 +264,34 @@ fun StreamPlayerScreen(
     val videoPlayerState = rememberVideoPlayerState(hideSeconds = 4)
     val pulseState = rememberVideoPlayerPulseState()
 
-    val dpadModifier = if (isLocked) {
-        Modifier
-    } else {
-        Modifier.handleDPadKeyEvents(
-            onLeft = {
-                if (!showChannelInfo) {
-                    exoPlayer.seekBack()
-                    pulseState.setType(BACK)
-                }
-            },
-            onRight = {
-                if (!showChannelInfo) {
-                    exoPlayer.seekForward()
-                    pulseState.setType(FORWARD)
-                }
-            },
-            onUp = {
-                showChannelInfo = true
-            },
-            onDown = {
-                showChannelInfo = true
-            },
-            onEnter = {
-                if (exoPlayer.isPlaying) {
-                    exoPlayer.pause()
-                } else {
-                    exoPlayer.play()
-                }
-                showChannelInfo = true
+    val dpadModifier = Modifier.handleDPadKeyEvents(
+        onLeft = {
+            if (!showChannelInfo) {
+                exoPlayer.seekBack()
+                pulseState.setType(BACK)
             }
-        )
-    }
+        },
+        onRight = {
+            if (!showChannelInfo) {
+                exoPlayer.seekForward()
+                pulseState.setType(FORWARD)
+            }
+        },
+        onUp = {
+            showChannelInfo = true
+        },
+        onDown = {
+            showChannelInfo = true
+        },
+        onEnter = {
+            if (exoPlayer.isPlaying) {
+                exoPlayer.pause()
+            } else {
+                exoPlayer.play()
+            }
+            showChannelInfo = true
+        }
+    )
 
     Box(
         modifier = Modifier
@@ -359,7 +299,6 @@ fun StreamPlayerScreen(
             .background(Color.Black)
             .then(dpadModifier)
             .onPreviewKeyEvent {
-                if (isLocked) return@onPreviewKeyEvent false
                 if (it.nativeKeyEvent.action != KeyEvent.ACTION_UP) return@onPreviewKeyEvent false
 
                 val keyCode = it.nativeKeyEvent.keyCode
@@ -488,64 +427,6 @@ fun StreamPlayerScreen(
                     if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
                 }
             )
-        }
-
-        if (isLocked) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.85f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF1E1E1E))
-                        .padding(32.dp)
-                ) {
-                    Text(
-                        text = "Parental Controls",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Enter PIN to unlock",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    TextField(
-                        value = pinEntry,
-                        onValueChange = { pinEntry = it.filter(Char::isDigit).take(4) },
-                        label = { Text("PIN") },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.NumberPassword,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(onDone = { submitPin() })
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Button(
-                        onClick = submitPin,
-                        enabled = !isVerifyingPin
-                    ) {
-                        Text(if (isVerifyingPin) "Checking..." else "Unlock")
-                    }
-                    pinError?.let { message ->
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFFef5350)
-                        )
-                    }
-                }
-            }
         }
 
         AnimatedVisibility(
@@ -888,15 +769,4 @@ private fun ControlHint(
             color = Color.White.copy(alpha = 0.7f)
         )
     }
-}
-
-private fun isRestrictedContent(streamArgs: StreamPlayerArgs): Boolean {
-    val haystack = listOfNotNull(
-        streamArgs.streamName,
-        streamArgs.categoryName,
-        streamArgs.programTitle
-    ).joinToString(" ").lowercase(Locale.getDefault())
-
-    val keywords = listOf("adult", "xxx", "18+", "porn", "erotic", "sex", "nsfw")
-    return keywords.any { haystack.contains(it) }
 }

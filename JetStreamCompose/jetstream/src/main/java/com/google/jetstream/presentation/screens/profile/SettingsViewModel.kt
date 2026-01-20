@@ -21,43 +21,9 @@ class SettingsViewModel @Inject constructor(
         initialValue = ThemeOption.Ocean
     )
 
-    val parentalEnabled = settingsRepository.parentalEnabledFlow.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = false
-    )
-
-    val isPinSet = settingsRepository.isParentalPinSet.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = false
-    )
-
     fun setTheme(option: ThemeOption) {
         viewModelScope.launch {
             settingsRepository.setTheme(option)
         }
-    }
-
-    fun setParentalEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            settingsRepository.setParentalEnabled(enabled)
-        }
-    }
-
-    fun setParentalPin(pin: String) {
-        viewModelScope.launch {
-            settingsRepository.setParentalPin(pin)
-        }
-    }
-
-    fun clearParentalPin() {
-        viewModelScope.launch {
-            settingsRepository.clearParentalPin()
-        }
-    }
-
-    suspend fun verifyPin(pin: String): Boolean {
-        return settingsRepository.verifyPin(pin)
     }
 }

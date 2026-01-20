@@ -3,6 +3,11 @@
  */
 package com.google.jetstream.presentation.screens.livechannels
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,11 +24,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.grid.TvGridCells
+import androidx.tv.foundation.lazy.grid.rememberTvLazyGridState
 import androidx.tv.foundation.lazy.grid.TvLazyVerticalGrid
 import androidx.tv.foundation.lazy.grid.items
 import androidx.tv.foundation.lazy.list.TvLazyRow
@@ -43,7 +48,6 @@ import androidx.tv.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
-import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -102,66 +106,97 @@ fun LiveChannelsScreen(
         }
 
         is LiveChannelsUiState.Ready -> {
+            val gridState = rememberTvLazyGridState()
+            val showExpandedHeader by remember {
+                derivedStateOf {
+                    gridState.firstVisibleItemIndex == 0 &&
+                        gridState.firstVisibleItemScrollOffset < 24
+                }
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 48.dp, vertical = 24.dp)
             ) {
-                // Title
-                Text(
-                    text = "Live TV",
-                    style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
                 val recentLiveHistory = remember(recentHistory) {
                     recentHistory.filter { it.streamType == StreamTypes.LIVE }
                 }
 
-                if (recentLiveHistory.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "Recently Watched",
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(bottom = 12.dp)
+                        text = "Live TV",
+                        style = MaterialTheme.typography.headlineLarge
                     )
 
-                    TvLazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        items(recentLiveHistory, key = { it.streamId }) { history ->
-                            HistoryChannelCard(
-                                history = history,
-                                onClick = {
-                                    coroutineScope.launch {
-                                        val streamUrl = viewModel.getStreamUrl(history.streamId)
-                                        if (streamUrl != null) {
-                                            onChannelSelected(
-                                                StreamPlayerArgs(
-                                                    streamUrl = streamUrl,
-                                                    streamName = history.name,
-                                                    streamId = history.streamId,
-                                                    streamType = StreamTypes.LIVE,
-                                                    streamIcon = history.streamIcon
-                                                )
-                                            )
+                    if (state.channels.isNotEmpty()) {
+                        Text(
+                            text = "${state.channels.size} channels",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = showExpandedHeader,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically()
+                ) {
+                    Column {
+                        if (recentLiveHistory.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Recently Watched",
+                                style = MaterialTheme.typography.headlineSmall,
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
+
+                            TvLazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                contentPadding = PaddingValues(bottom = 8.dp)
+                            ) {
+                                items(recentLiveHistory, key = { it.streamId }) { history ->
+                                    HistoryChannelCard(
+                                        history = history,
+                                        onClick = {
+                                            coroutineScope.launch {
+                                                val streamUrl = viewModel.getStreamUrl(history.streamId)
+                                                if (streamUrl != null) {
+                                                    onChannelSelected(
+                                                        StreamPlayerArgs(
+                                                            streamUrl = streamUrl,
+                                                            streamName = history.name,
+                                                            streamId = history.streamId,
+                                                            streamType = StreamTypes.LIVE,
+                                                            streamIcon = history.streamIcon
+                                                        )
+                                                    )
+                                                }
+                                            }
                                         }
-                                    }
+                                    )
                                 }
+                            }
+                        }
+
+                        // Category Filter Chips
+                        if (state.categories.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            CategoryFilterRow(
+                                categories = state.categories,
+                                selectedCategoryId = state.selectedCategoryId,
+                                onCategorySelected = { viewModel.selectCategory(it) }
                             )
                         }
                     }
                 }
 
-                // Category Filter Chips
-                if (state.categories.isNotEmpty()) {
-                    CategoryFilterRow(
-                        categories = state.categories,
-                        selectedCategoryId = state.selectedCategoryId,
-                        onCategorySelected = { viewModel.selectCategory(it) }
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Channels Grid
                 if (state.channels.isEmpty()) {
@@ -175,14 +210,9 @@ fun LiveChannelsScreen(
                         )
                     }
                 } else {
-                    Text(
-                        text = "${state.channels.size} channels",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
                     TvLazyVerticalGrid(
                         columns = TvGridCells.Fixed(5),
+                        state = gridState,
                         contentPadding = PaddingValues(bottom = 24.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)

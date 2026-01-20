@@ -3,8 +3,8 @@
  */
 package com.google.jetstream.presentation.screens.epg
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,12 +27,16 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,12 +45,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.foundation.lazy.list.TvLazyColumn
 import androidx.tv.foundation.lazy.list.TvLazyRow
 import androidx.tv.foundation.lazy.list.items
+import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.Icon
 import androidx.tv.material3.IconButton
+import androidx.tv.material3.surfaceColorAtElevation
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.tv.material3.MaterialTheme
@@ -59,6 +65,9 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val EpgAccentColor = Color(0xFF00b4d8)
+private val EpgCardShape = RoundedCornerShape(10.dp)
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -140,7 +149,7 @@ fun EpgScreen(
                 // Channel list with programs
                 TvLazyColumn(
                     contentPadding = PaddingValues(bottom = 24.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     items(state.channels, key = { it.channel.streamId }) { channelWithPrograms ->
                         EpgChannelRow(
@@ -268,7 +277,7 @@ private fun EpgHeader(
             Card(
                 onClick = onGoToNow,
                 colors = CardDefaults.colors(
-                    containerColor = Color(0xFF00b4d8)
+                    containerColor = EpgAccentColor
                 )
             ) {
                 Row(
@@ -387,6 +396,8 @@ private fun EpgChannelRow(
             .height(72.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val channelContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        val channelFocusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
         // Channel info (fixed width)
         Card(
             onClick = onChannelClick,
@@ -394,8 +405,17 @@ private fun EpgChannelRow(
                 .width(130.dp)
                 .fillMaxHeight(),
             colors = CardDefaults.colors(
-                containerColor = Color(0xFF1E1E1E)
-            )
+                containerColor = channelContainer,
+                focusedContainerColor = channelFocusedContainer
+            ),
+            border = CardDefaults.border(
+                focusedBorder = Border(
+                    border = BorderStroke(1.dp, EpgAccentColor.copy(alpha = 0.35f)),
+                    shape = EpgCardShape
+                )
+            ),
+            scale = CardDefaults.scale(focusedScale = 1.02f),
+            shape = EpgCardShape
         ) {
             Row(
                 modifier = Modifier
@@ -425,14 +445,14 @@ private fun EpgChannelRow(
             }
         }
 
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(6.dp))
 
         // Programs timeline
         Row(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight(),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             visiblePrograms.forEach { program ->
                 val programWeight = calculateProgramWeight(
@@ -486,111 +506,128 @@ private fun EpgProgramCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val backgroundColor = if (program.isLive) {
-        Color(0xFF00b4d8).copy(alpha = 0.3f)
-    } else {
-        Color(0xFF2A2A2A)
-    }
-
-    val borderColor = if (program.isLive) {
-        Color(0xFF00b4d8)
-    } else {
-        Color.Transparent
-    }
+    var isFocused by remember { mutableStateOf(false) }
+    val baseContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+    val liveContainer = lerp(baseContainer, EpgAccentColor, 0.12f)
+    val liveFocusedContainer = lerp(focusedContainer, EpgAccentColor, 0.18f)
+    val showDetails = isFocused && !program.description.isNullOrBlank()
 
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (program.isLive) {
-                    Modifier.border(2.dp, borderColor, RoundedCornerShape(8.dp))
-                } else {
-                    Modifier
-                }
-            ),
-        colors = CardDefaults.colors(containerColor = backgroundColor)
+            .onFocusChanged { isFocused = it.isFocused },
+        colors = CardDefaults.colors(
+            containerColor = if (program.isLive) liveContainer else baseContainer,
+            focusedContainerColor = if (program.isLive) liveFocusedContainer else focusedContainer
+        ),
+        border = CardDefaults.border(
+            focusedBorder = Border(
+                border = BorderStroke(1.dp, EpgAccentColor.copy(alpha = 0.35f)),
+                shape = EpgCardShape
+            )
+        ),
+        scale = CardDefaults.scale(focusedScale = 1.03f),
+        shape = EpgCardShape
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                // Live indicator
-                if (program.isLive) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(Color.Red)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "LIVE",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.Red,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                } else if (program.isCatchupAvailable) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(bottom = 2.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = Color(0xFFFFB74D),
-                            modifier = Modifier.size(12.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "CATCH-UP",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFFFFB74D),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                // Program title
-                Text(
-                    text = program.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (program.isLive) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .width(3.dp)
+                        .background(EpgAccentColor.copy(alpha = 0.85f))
                 )
+            }
 
-                // Description
-                program.description?.let {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = if (program.isLive) 12.dp else 8.dp,
+                        top = 8.dp,
+                        end = 8.dp,
+                        bottom = 8.dp
+                    ),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    // Live indicator
+                    if (program.isLive) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Red)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "LIVE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    } else if (program.isCatchupAvailable) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = Color(0xFFFFB74D),
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "CATCH-UP",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFFFB74D),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Program title
                     Text(
-                        text = it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        text = program.title,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                }
-            }
 
-            // Progress bar for live programs
-            if (program.isLive) {
-                LinearProgressIndicator(
-                    progress = { program.progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = Color(0xFF00b4d8),
-                    trackColor = Color.White.copy(alpha = 0.2f)
-                )
+                    // Description (focus-only to reduce visual noise)
+                    if (showDetails) {
+                        Text(
+                            text = program.description.orEmpty(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Progress bar for live programs
+                if (program.isLive) {
+                    LinearProgressIndicator(
+                        progress = { program.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = EpgAccentColor,
+                        trackColor = Color.White.copy(alpha = 0.2f)
+                    )
+                }
             }
         }
     }

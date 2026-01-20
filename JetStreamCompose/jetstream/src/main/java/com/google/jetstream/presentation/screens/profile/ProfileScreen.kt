@@ -34,10 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -162,8 +160,6 @@ fun ProfileScreen(
             }
         }
 
-        var selectedLanguageIndex by rememberSaveable { mutableIntStateOf(0) }
-        var isSubtitlesChecked by rememberSaveable { mutableStateOf(true) }
         NavHost(
             modifier = Modifier
                 .fillMaxSize()
@@ -189,27 +185,6 @@ fun ProfileScreen(
                 }
                 composable(ProfileScreens.Appearance()) {
                     AppearanceSection()
-                }
-                composable(ProfileScreens.Subtitles()) {
-                    SubtitlesSection(
-                        isSubtitlesChecked = isSubtitlesChecked,
-                        onSubtitleCheckChange = { isSubtitlesChecked = it }
-                    )
-                }
-                composable(ProfileScreens.Language()) {
-                    LanguageSection(
-                        selectedIndex = selectedLanguageIndex,
-                        onSelectedIndexChange = { selectedLanguageIndex = it }
-                    )
-                }
-                composable(ProfileScreens.ParentalControls()) {
-                    ParentalControlsSection()
-                }
-                composable(ProfileScreens.SearchHistory()) {
-                    SearchHistorySection()
-                }
-                composable(ProfileScreens.HelpAndSupport()) {
-                    HelpAndSupportSection()
                 }
             }
         )

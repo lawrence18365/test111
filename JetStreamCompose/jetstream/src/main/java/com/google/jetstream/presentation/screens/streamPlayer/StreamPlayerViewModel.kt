@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.jetstream.data.models.xtream.XtreamChannel
 import com.google.jetstream.data.repositories.FavoritesRepository
-import com.google.jetstream.data.repositories.SettingsRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,15 +15,11 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class StreamPlayerViewModel @Inject constructor(
     private val favoritesRepository: FavoritesRepository,
-    private val xtreamRepository: XtreamRepository,
-    private val settingsRepository: SettingsRepository
+    private val xtreamRepository: XtreamRepository
 ) : ViewModel() {
 
     private var cachedChannels: List<XtreamChannel> = emptyList()
     private var channelsLoaded = false
-
-    val parentalEnabled = settingsRepository.parentalEnabledFlow
-    val isParentalPinSet = settingsRepository.isParentalPinSet
 
     fun isFavorite(streamId: Int): Flow<Boolean> {
         if (streamId <= 0) return flowOf(false)
@@ -66,10 +61,6 @@ class StreamPlayerViewModel @Inject constructor(
     suspend fun getLastPosition(streamId: Int): Long? {
         if (streamId <= 0) return null
         return favoritesRepository.getLastPosition(streamId)
-    }
-
-    suspend fun verifyParentalPin(pin: String): Boolean {
-        return settingsRepository.verifyPin(pin)
     }
 
     suspend fun buildStreamArgsForChannelNumber(channelNumber: Int): StreamPlayerArgs? {

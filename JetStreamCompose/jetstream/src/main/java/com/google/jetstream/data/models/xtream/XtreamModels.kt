@@ -1,3 +1,4 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
 /*
  * Copyright 2024 Google LLC
  *
@@ -21,6 +22,7 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 /**
  * Response from player_api.php authentication call
@@ -63,20 +65,28 @@ data class ServerInfo(
  */
 @Serializable
 data class XtreamChannel(
-    val num: Int? = null,
-    val name: String,
+    @Serializable(with = FlexibleNullableIntSerializer::class) val num: Int? = null,
+    val name: String = "",
     @SerialName("stream_type") val streamType: String? = null,
-    @SerialName("stream_id") val streamId: Int,
+    @SerialName("stream_id")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val streamId: Int = 0,
     @SerialName("stream_icon") val streamIcon: String? = null,
     @SerialName("epg_channel_id") val epgChannelId: String? = null,
     val added: String? = null,
     @SerialName("category_id") val categoryId: String? = null,
     @SerialName("category_ids") val categoryIds: List<Int>? = null,
-    @SerialName("is_adult") val isAdult: Int? = null,
+    @SerialName("is_adult")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val isAdult: Int? = null,
     @SerialName("custom_sid") val customSid: String? = null,
-    @SerialName("tv_archive") val tvArchive: Int? = null,
+    @SerialName("tv_archive")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val tvArchive: Int? = null,
     @SerialName("direct_source") val directSource: String? = null,
-    @SerialName("tv_archive_duration") val tvArchiveDuration: Int? = null
+    @SerialName("tv_archive_duration")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val tvArchiveDuration: Int? = null
 )
 
 /**
@@ -94,13 +104,18 @@ data class XtreamCategory(
  */
 @Serializable
 data class XtreamVodItem(
-    val num: Int? = null,
-    val name: String,
+    @Serializable(with = FlexibleNullableIntSerializer::class) val num: Int? = null,
+    val name: String = "",
     @SerialName("stream_type") val streamType: String? = null,
-    @SerialName("stream_id") val streamId: Int,
+    @SerialName("stream_id")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val streamId: Int = 0,
     @SerialName("stream_icon") val streamIcon: String? = null,
+    @Serializable(with = FlexibleNullableStringSerializer::class)
     val rating: String? = null,
-    @SerialName("rating_5based") val rating5Based: Double? = null,
+    @SerialName("rating_5based")
+    @Serializable(with = FlexibleNullableDoubleSerializer::class)
+    val rating5Based: Double? = null,
     val added: String? = null,
     @SerialName("category_id") val categoryId: String? = null,
     @SerialName("container_extension") val containerExtension: String? = null,
@@ -127,11 +142,17 @@ data class XtreamVodInfo(
     val cast: String? = null,
     val director: String? = null,
     val genre: String? = null,
-    @SerialName("release_date") val releaseDate: String? = null,
+    @SerialName("release_date")
+    @JsonNames("releasedate")
+    val releaseDate: String? = null,
+    @Serializable(with = FlexibleNullableStringSerializer::class)
     val rating: String? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     val duration: String? = null,
-    @SerialName("duration_secs") val durationSecs: Int? = null,
+    @SerialName("duration_secs")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val durationSecs: Int? = null,
+    @Serializable(with = FlexibleNullableIntSerializer::class)
     val bitrate: Int? = null,
     @SerialName("backdrop_path") val backdropPath: List<String>? = null,
     val video: XtreamVideoInfo? = null,
@@ -140,7 +161,9 @@ data class XtreamVodInfo(
 
 @Serializable
 data class XtreamVodMovieData(
-    @SerialName("stream_id") val streamId: Int? = null,
+    @SerialName("stream_id")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val streamId: Int? = null,
     val name: String? = null,
     @SerialName("container_extension") val containerExtension: String? = null,
     @SerialName("category_id") val categoryId: String? = null,
@@ -152,9 +175,11 @@ data class XtreamVodMovieData(
  */
 @Serializable
 data class XtreamSeries(
-    val num: Int? = null,
-    val name: String,
-    @SerialName("series_id") val seriesId: Int,
+    @Serializable(with = FlexibleNullableIntSerializer::class) val num: Int? = null,
+    val name: String = "",
+    @SerialName("series_id")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val seriesId: Int = 0,
     val cover: String? = null,
     val plot: String? = null,
     val cast: String? = null,
@@ -162,8 +187,11 @@ data class XtreamSeries(
     val genre: String? = null,
     @SerialName("release_date") val releaseDate: String? = null,
     @SerialName("last_modified") val lastModified: String? = null,
+    @Serializable(with = FlexibleNullableStringSerializer::class)
     val rating: String? = null,
-    @SerialName("rating_5based") val rating5Based: Double? = null,
+    @SerialName("rating_5based")
+    @Serializable(with = FlexibleNullableDoubleSerializer::class)
+    val rating5Based: Double? = null,
     @SerialName("backdrop_path") val backdropPath: List<String>? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     @SerialName("episode_run_time") val episodeRunTime: String? = null,
@@ -183,8 +211,12 @@ data class XtreamEpgListing(
     val end: String? = null,
     val description: String? = null,
     @SerialName("channel_id") val channelId: String? = null,
-    @SerialName("start_timestamp") val startTimestamp: Long? = null,
-    @SerialName("stop_timestamp") val stopTimestamp: Long? = null
+    @SerialName("start_timestamp")
+    @Serializable(with = FlexibleNullableLongSerializer::class)
+    val startTimestamp: Long? = null,
+    @SerialName("stop_timestamp")
+    @Serializable(with = FlexibleNullableLongSerializer::class)
+    val stopTimestamp: Long? = null
 )
 
 /**
@@ -199,9 +231,13 @@ data class XtreamSeriesInfo(
 
 @Serializable
 data class XtreamSeason(
-    @SerialName("season_number") val seasonNumber: Int,
+    @SerialName("season_number")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val seasonNumber: Int = 0,
     val name: String? = null,
-    @SerialName("episode_count") val episodeCount: Int? = null,
+    @SerialName("episode_count")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val episodeCount: Int? = null,
     val cover: String? = null,
     @SerialName("cover_big") val coverBig: String? = null
 )
@@ -215,8 +251,11 @@ data class XtreamSeriesDetails(
     val director: String? = null,
     val genre: String? = null,
     @SerialName("release_date") val releaseDate: String? = null,
+    @Serializable(with = FlexibleNullableStringSerializer::class)
     val rating: String? = null,
-    @SerialName("rating_5based") val rating5Based: Double? = null,
+    @SerialName("rating_5based")
+    @Serializable(with = FlexibleNullableDoubleSerializer::class)
+    val rating5Based: Double? = null,
     @SerialName("backdrop_path") val backdropPath: List<String>? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     @SerialName("episode_run_time") val episodeRunTime: String? = null,
@@ -243,12 +282,15 @@ data class XtreamAudioInfo(
 @Serializable
 data class XtreamEpisode(
     val id: String? = null,
-    @SerialName("episode_num") val episodeNum: Int,
+    @SerialName("episode_num")
+    @Serializable(with = FlexibleIntSerializer::class)
+    val episodeNum: Int = 0,
     val title: String? = null,
     @SerialName("container_extension") val containerExtension: String? = null,
     val info: XtreamEpisodeInfo? = null,
     @SerialName("custom_sid") val customSid: String? = null,
     val added: String? = null,
+    @Serializable(with = FlexibleNullableIntSerializer::class)
     val season: Int? = null,
     @SerialName("direct_source") val directSource: String? = null
 )
@@ -258,10 +300,14 @@ data class XtreamEpisodeInfo(
     @SerialName("movie_image") val movieImage: String? = null,
     val plot: String? = null,
     @SerialName("release_date") val releaseDate: String? = null,
+    @Serializable(with = FlexibleNullableDoubleSerializer::class)
     val rating: Double? = null,
     val name: String? = null,
-    @SerialName("duration_secs") val durationSecs: Int? = null,
+    @SerialName("duration_secs")
+    @Serializable(with = FlexibleNullableIntSerializer::class)
+    val durationSecs: Int? = null,
     val duration: String? = null,
+    @Serializable(with = FlexibleNullableIntSerializer::class)
     val bitrate: Int? = null
 )
 
@@ -273,7 +319,8 @@ data class XtreamCredentials(
     val serverUrl: String,
     val username: String,
     val password: String,
-    val name: String = "Default"
+    val name: String = "Default",
+    val allowedOutputFormats: List<String> = emptyList()
 )
 
 /**

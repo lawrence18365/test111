@@ -40,7 +40,11 @@ class VideoPlayerScreenViewModel @Inject constructor(
                 VideoPlayerScreenUiState.Error
             } else {
                 val details = repository.getMovieDetails(movieId = id)
-                VideoPlayerScreenUiState.Done(movieDetails = details)
+                if (details.videoUri.isBlank()) {
+                    VideoPlayerScreenUiState.Error
+                } else {
+                    VideoPlayerScreenUiState.Done(movieDetails = details)
+                }
             }
         }.stateIn(
             scope = viewModelScope,

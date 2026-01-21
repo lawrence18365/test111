@@ -91,7 +91,14 @@ class XtreamRepository @Inject constructor(
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null && body.userInfo.auth == 1) {
-                    saveCredentials(XtreamCredentials(serverUrl, username, password))
+                    saveCredentials(
+                        XtreamCredentials(
+                            serverUrl = serverUrl,
+                            username = username,
+                            password = password,
+                            allowedOutputFormats = body.userInfo.allowedOutputFormats
+                        )
+                    )
                     XtreamResult.Success(body)
                 } else {
                     XtreamResult.Error(body?.userInfo?.message ?: "Authentication failed")
@@ -186,7 +193,9 @@ class XtreamRepository @Inject constructor(
             )
             val response = apiService.getLiveStreams(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.streamId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch channels", response.code())
             }
@@ -209,7 +218,9 @@ class XtreamRepository @Inject constructor(
             ) + "&category_id=$categoryId"
             val response = apiService.getLiveStreamsByCategory(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.streamId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch channels", response.code())
             }
@@ -249,7 +260,9 @@ class XtreamRepository @Inject constructor(
             )
             val response = apiService.getVodStreams(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.streamId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch VOD streams", response.code())
             }
@@ -269,7 +282,9 @@ class XtreamRepository @Inject constructor(
             ) + "&category_id=$categoryId"
             val response = apiService.getVodStreamsByCategory(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.streamId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch VOD streams", response.code())
             }
@@ -329,7 +344,9 @@ class XtreamRepository @Inject constructor(
             )
             val response = apiService.getSeries(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.seriesId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch series", response.code())
             }
@@ -349,7 +366,9 @@ class XtreamRepository @Inject constructor(
             ) + "&category_id=$categoryId"
             val response = apiService.getSeriesByCategory(url)
             if (response.isSuccessful) {
-                XtreamResult.Success(response.body() ?: emptyList())
+                val items = response.body().orEmpty()
+                    .filter { it.seriesId > 0 && it.name.isNotBlank() }
+                XtreamResult.Success(items)
             } else {
                 XtreamResult.Error("Failed to fetch series", response.code())
             }
@@ -383,9 +402,11 @@ class XtreamRepository @Inject constructor(
      */
     suspend fun buildEpisodeStreamUrl(episodeId: String, extension: String = "mp4"): String? {
         val creds = getCredentials() ?: return null
+        val parsedEpisodeId = episodeId.toIntOrNull() ?: return null
         return XtreamUrlBuilder.buildSeriesStreamUrl(
             creds.serverUrl, creds.username, creds.password,
-            episodeId.toIntOrNull() ?: 0, extension
+            parsedEpisodeId,
+            extension
         )
     }
 
@@ -393,12 +414,17 @@ class XtreamRepository @Inject constructor(
      * Build a playable stream URL for a live channel
      */
     suspend fun buildLiveStreamUrl(streamId: Int): String? {
+        if (streamId <= 0) return null
         if (isM3uMode()) {
             return m3uRepository.getAllChannels().find { it.streamId == streamId }?.directSource
         }
         val creds = getCredentials() ?: return null
         return XtreamUrlBuilder.buildLiveStreamUrl(
-            creds.serverUrl, creds.username, creds.password, streamId
+            creds.serverUrl,
+            creds.username,
+            creds.password,
+            streamId,
+            preferredLiveExtension(creds)
         )
     }
 
@@ -406,6 +432,7 @@ class XtreamRepository @Inject constructor(
      * Build a playable stream URL for VOD
      */
     suspend fun buildVodStreamUrl(streamId: Int, extension: String = "mp4"): String? {
+        if (streamId <= 0) return null
         if (isM3uMode()) {
             return m3uRepository.getAllChannels().find { it.streamId == streamId }?.directSource
         }
@@ -421,6 +448,7 @@ class XtreamRepository @Inject constructor(
         endTimeMs: Long,
         extension: String = "ts"
     ): String? {
+        if (streamId <= 0) return null
         val creds = getCredentials() ?: return null
         val durationMinutes = ((endTimeMs - startTimeMs) / 60000).toInt().coerceAtLeast(1)
         return XtreamUrlBuilder.buildCatchupStreamUrl(
@@ -432,5 +460,14 @@ class XtreamRepository @Inject constructor(
             durationMinutes,
             extension
         )
+    }
+
+    private fun preferredLiveExtension(credentials: XtreamCredentials): String {
+        val formats = credentials.allowedOutputFormats.map { it.lowercase() }
+        return when {
+            formats.contains("m3u8") -> "m3u8"
+            formats.contains("ts") -> "ts"
+            else -> "m3u8"
+        }
     }
 }

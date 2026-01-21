@@ -27,7 +27,10 @@ import com.google.jetstream.data.repositories.xtream.XtreamResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,6 +40,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 sealed class SearchResult {
     data class Channel(val channel: XtreamChannel) : SearchResult()
@@ -97,6 +101,7 @@ class XtreamSearchViewModel @Inject constructor(
 
     // Mutex for thread-safe cache access
     private val cacheMutex = Mutex()
+    private var searchJob: Job? = null
 
     init {
         // Debounce search queries
@@ -107,6 +112,7 @@ class XtreamSearchViewModel @Inject constructor(
                 .filter { it.length >= 3 || it.isEmpty() }
                 .collect { query ->
                     if (query.isEmpty()) {
+                        searchJob?.cancel()
                         _uiState.value = _uiState.value.copy(
                             query = "",
                             liveResults = emptyList(),
@@ -116,7 +122,7 @@ class XtreamSearchViewModel @Inject constructor(
                             error = null
                         )
                     } else {
-                        performSearch(query)
+                        triggerSearch(query)
                     }
                 }
         }
@@ -130,7 +136,7 @@ class XtreamSearchViewModel @Inject constructor(
     fun setFilter(filter: SearchFilter) {
         _uiState.value = _uiState.value.copy(filter = filter)
         if (_uiState.value.query.isNotEmpty()) {
-            performSearch(_uiState.value.query)
+            triggerSearch(_uiState.value.query)
         }
     }
 
@@ -200,88 +206,101 @@ class XtreamSearchViewModel @Inject constructor(
         )
     }
 
-    private fun performSearch(query: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, query = query, error = null)
-
-            val filter = _uiState.value.filter
-
-            // Load required data based on filter (on-demand)
-            val dataLoadNeeded = when (filter) {
-                SearchFilter.ALL ->
-                    cachedChannels == null ||
-                        cachedVod == null ||
-                        cachedSeries == null
-                SearchFilter.LIVE -> cachedChannels == null
-                SearchFilter.MOVIES -> cachedVod == null
-                SearchFilter.SERIES -> cachedSeries == null
-            }
-
-            if (dataLoadNeeded) {
-                _uiState.value = _uiState.value.copy(isLoadingData = true)
-                loadRequiredData(filter)
-                _uiState.value = _uiState.value.copy(isLoadingData = false)
-            }
-
-            // Perform the actual search
-            val queryClean = sanitize(query)
-
-            // Temporary lists
-            val liveList = mutableListOf<SearchResult.Channel>()
-            val movieList = mutableListOf<SearchResult.Vod>()
-            val seriesList = mutableListOf<SearchResult.Series>()
-
-            cacheMutex.withLock {
-                // Search channels (name, EPG channel ID, category name)
-                if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
-                    cachedChannels?.asSequence()
-                        ?.filter { channelMatchesQuery(it, queryClean) }
-                        ?.take(50)
-                        ?.forEach { liveList.add(SearchResult.Channel(it)) }
-                }
-
-                // Search VOD (name, category name)
-                if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
-                    cachedVod?.asSequence()
-                        ?.filter { vodMatchesQuery(it, queryClean) }
-                        ?.take(50)
-                        ?.forEach { movieList.add(SearchResult.Vod(it)) }
-                }
-
-                // Search Series (name, plot, cast, director, genre, category name)
-                if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
-                    cachedSeries?.asSequence()
-                        ?.filter { seriesMatchesQuery(it, queryClean) }
-                        ?.take(50)
-                        ?.forEach { seriesList.add(SearchResult.Series(it)) }
-                }
-            }
-
-            _uiState.value = _uiState.value.copy(
-                liveResults = liveList,
-                movieResults = movieList,
-                seriesResults = seriesList,
-                isLoading = false
-            )
+    private fun triggerSearch(query: String) {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            performSearch(query)
         }
     }
 
+    private suspend fun performSearch(query: String) {
+        _uiState.value = _uiState.value.copy(isLoading = true, query = query, error = null)
+
+        val filter = _uiState.value.filter
+
+        // Load required data based on filter (on-demand)
+        val dataLoadNeeded = when (filter) {
+            SearchFilter.ALL ->
+                cachedChannels == null ||
+                    cachedVod == null ||
+                    cachedSeries == null
+            SearchFilter.LIVE -> cachedChannels == null
+            SearchFilter.MOVIES -> cachedVod == null
+            SearchFilter.SERIES -> cachedSeries == null
+        }
+
+        if (dataLoadNeeded) {
+            _uiState.value = _uiState.value.copy(isLoadingData = true)
+            withContext(Dispatchers.IO) {
+                loadRequiredData(filter)
+            }
+            _uiState.value = _uiState.value.copy(isLoadingData = false)
+        }
+
+        // Perform the actual search
+        val queryClean = sanitize(query)
+
+        val (channelsSnapshot, vodSnapshot, seriesSnapshot) = cacheMutex.withLock {
+            Triple(cachedChannels, cachedVod, cachedSeries)
+        }
+
+        val (liveList, movieList, seriesList) = withContext(Dispatchers.Default) {
+            // Temporary lists
+            val live = mutableListOf<SearchResult.Channel>()
+            val movies = mutableListOf<SearchResult.Vod>()
+            val series = mutableListOf<SearchResult.Series>()
+
+            // Search channels (name, EPG channel ID, category name)
+            if (filter == SearchFilter.ALL || filter == SearchFilter.LIVE) {
+                channelsSnapshot?.asSequence()
+                    ?.filter { channelMatchesQuery(it, queryClean) }
+                    ?.take(50)
+                    ?.forEach { live.add(SearchResult.Channel(it)) }
+            }
+
+            // Search VOD (name, category name)
+            if (filter == SearchFilter.ALL || filter == SearchFilter.MOVIES) {
+                vodSnapshot?.asSequence()
+                    ?.filter { vodMatchesQuery(it, queryClean) }
+                    ?.take(50)
+                    ?.forEach { movies.add(SearchResult.Vod(it)) }
+            }
+
+            // Search Series (name, plot, cast, director, genre, category name)
+            if (filter == SearchFilter.ALL || filter == SearchFilter.SERIES) {
+                seriesSnapshot?.asSequence()
+                    ?.filter { seriesMatchesQuery(it, queryClean) }
+                    ?.take(50)
+                    ?.forEach { series.add(SearchResult.Series(it)) }
+            }
+
+            Triple(live, movies, series)
+        }
+
+        _uiState.value = _uiState.value.copy(
+            liveResults = liveList,
+            movieResults = movieList,
+            seriesResults = seriesList,
+            isLoading = false
+        )
+    }
+
     private suspend fun loadRequiredData(filter: SearchFilter) {
-        cacheMutex.withLock {
-            when (filter) {
-                SearchFilter.ALL -> {
-                    // Load all in parallel
-                    val channelsDeferred = viewModelScope.async { loadChannelsIfNeeded() }
-                    val vodDeferred = viewModelScope.async { loadVodIfNeeded() }
-                    val seriesDeferred = viewModelScope.async { loadSeriesIfNeeded() }
+        when (filter) {
+            SearchFilter.ALL -> {
+                // Load all in parallel
+                coroutineScope {
+                    val channelsDeferred = async(Dispatchers.IO) { loadChannelsIfNeeded() }
+                    val vodDeferred = async(Dispatchers.IO) { loadVodIfNeeded() }
+                    val seriesDeferred = async(Dispatchers.IO) { loadSeriesIfNeeded() }
                     channelsDeferred.await()
                     vodDeferred.await()
                     seriesDeferred.await()
                 }
-                SearchFilter.LIVE -> loadChannelsIfNeeded()
-                SearchFilter.MOVIES -> loadVodIfNeeded()
-                SearchFilter.SERIES -> loadSeriesIfNeeded()
             }
+            SearchFilter.LIVE -> loadChannelsIfNeeded()
+            SearchFilter.MOVIES -> loadVodIfNeeded()
+            SearchFilter.SERIES -> loadSeriesIfNeeded()
         }
     }
 

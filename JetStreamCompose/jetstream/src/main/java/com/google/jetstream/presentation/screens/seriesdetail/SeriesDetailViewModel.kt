@@ -26,6 +26,7 @@ import com.google.jetstream.data.models.xtream.XtreamSeriesInfo
 import com.google.jetstream.data.repositories.FavoritesRepository
 import com.google.jetstream.data.repositories.xtream.XtreamRepository
 import com.google.jetstream.data.repositories.xtream.XtreamResult
+import com.google.jetstream.presentation.screens.SeriesIdBundleKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -60,7 +61,11 @@ class SeriesDetailViewModel @Inject constructor(
     private var seriesInfo: XtreamSeriesInfo? = null
 
     // Get series ID from navigation arguments
-    private val seriesId: Int = savedStateHandle.get<Int>("seriesId") ?: -1
+    private val seriesId: Int = when (val rawId = savedStateHandle.get<Any>(SeriesIdBundleKey)) {
+        is Int -> rawId
+        is String -> rawId.toIntOrNull() ?: -1
+        else -> -1
+    }
 
     init {
         if (seriesId > 0) {

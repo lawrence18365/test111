@@ -43,7 +43,11 @@ class XtreamVodDetailViewModel @Inject constructor(
     private val xtreamRepository: XtreamRepository
 ) : ViewModel() {
 
-    private val vodId = savedStateHandle.get<String>(VodIdBundleKey)?.toIntOrNull() ?: -1
+    private val vodId = when (val rawId = savedStateHandle.get<Any>(VodIdBundleKey)) {
+        is Int -> rawId
+        is String -> rawId.toIntOrNull() ?: -1
+        else -> -1
+    }
 
     private val _uiState = MutableStateFlow<XtreamVodDetailUiState>(XtreamVodDetailUiState.Loading)
     val uiState: StateFlow<XtreamVodDetailUiState> = _uiState.asStateFlow()

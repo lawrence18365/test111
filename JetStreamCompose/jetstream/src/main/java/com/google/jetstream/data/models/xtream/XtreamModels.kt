@@ -154,8 +154,12 @@ data class XtreamVodInfo(
     val durationSecs: Int? = null,
     @Serializable(with = FlexibleNullableIntSerializer::class)
     val bitrate: Int? = null,
-    @SerialName("backdrop_path") val backdropPath: List<String>? = null,
+    @SerialName("backdrop_path")
+    @Serializable(with = FlexibleStringListSerializer::class)
+    val backdropPath: List<String>? = null,
+    @Serializable(with = FlexibleVideoInfoSerializer::class)
     val video: XtreamVideoInfo? = null,
+    @Serializable(with = FlexibleAudioInfoSerializer::class)
     val audio: XtreamAudioInfo? = null
 )
 
@@ -192,7 +196,9 @@ data class XtreamSeries(
     @SerialName("rating_5based")
     @Serializable(with = FlexibleNullableDoubleSerializer::class)
     val rating5Based: Double? = null,
-    @SerialName("backdrop_path") val backdropPath: List<String>? = null,
+    @SerialName("backdrop_path")
+    @Serializable(with = FlexibleStringListSerializer::class)
+    val backdropPath: List<String>? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     @SerialName("episode_run_time") val episodeRunTime: String? = null,
     @SerialName("category_id") val categoryId: String? = null
@@ -256,11 +262,15 @@ data class XtreamSeriesDetails(
     @SerialName("rating_5based")
     @Serializable(with = FlexibleNullableDoubleSerializer::class)
     val rating5Based: Double? = null,
-    @SerialName("backdrop_path") val backdropPath: List<String>? = null,
+    @SerialName("backdrop_path")
+    @Serializable(with = FlexibleStringListSerializer::class)
+    val backdropPath: List<String>? = null,
     @SerialName("youtube_trailer") val youtubeTrailer: String? = null,
     @SerialName("episode_run_time") val episodeRunTime: String? = null,
     @SerialName("category_id") val categoryId: String? = null,
+    @Serializable(with = FlexibleVideoInfoSerializer::class)
     val video: XtreamVideoInfo? = null,
+    @Serializable(with = FlexibleAudioInfoSerializer::class)
     val audio: XtreamAudioInfo? = null
 )
 

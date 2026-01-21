@@ -232,6 +232,7 @@ data class XtreamEpgListing(
 data class XtreamSeriesInfo(
     val seasons: List<XtreamSeason> = emptyList(),
     val info: XtreamSeriesDetails? = null,
+    @Serializable(with = FlexibleEpisodesMapSerializer::class)
     val episodes: Map<String, List<XtreamEpisode>> = emptyMap()
 )
 
@@ -297,6 +298,7 @@ data class XtreamEpisode(
     val episodeNum: Int = 0,
     val title: String? = null,
     @SerialName("container_extension") val containerExtension: String? = null,
+    @Serializable(with = FlexibleEpisodeInfoSerializer::class)
     val info: XtreamEpisodeInfo? = null,
     @SerialName("custom_sid") val customSid: String? = null,
     val added: String? = null,

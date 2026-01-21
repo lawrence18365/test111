@@ -4,6 +4,7 @@ package com.google.jetstream.data.models.xtream
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
@@ -121,6 +122,10 @@ object FlexibleNullableStringSerializer : KSerializer<String?> {
 }
 
 private val stringListSerializer = ListSerializer(String.serializer())
+private val episodesMapSerializer = MapSerializer(
+    String.serializer(),
+    ListSerializer(XtreamEpisode.serializer())
+)
 
 object FlexibleStringListSerializer : KSerializer<List<String>?> {
     override val descriptor: SerialDescriptor = stringListSerializer.descriptor
@@ -192,6 +197,49 @@ object FlexibleAudioInfoSerializer : KSerializer<XtreamAudioInfo?> {
         } else {
             encoder.encodeSerializableValue(XtreamAudioInfo.serializer(), value)
         }
+    }
+}
+
+object FlexibleEpisodeInfoSerializer : KSerializer<XtreamEpisodeInfo?> {
+    override val descriptor: SerialDescriptor = XtreamEpisodeInfo.serializer().descriptor
+
+    override fun deserialize(decoder: Decoder): XtreamEpisodeInfo? {
+        val input = decoder as? JsonDecoder
+            ?: return decoder.decodeSerializableValue(XtreamEpisodeInfo.serializer())
+        val element = input.decodeJsonElement()
+        return when (element) {
+            is JsonObject -> input.json.decodeFromJsonElement(XtreamEpisodeInfo.serializer(), element)
+            is JsonNull -> null
+            else -> null
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: XtreamEpisodeInfo?) {
+        if (value == null) {
+            encoder.encodeNull()
+        } else {
+            encoder.encodeSerializableValue(XtreamEpisodeInfo.serializer(), value)
+        }
+    }
+}
+
+object FlexibleEpisodesMapSerializer : KSerializer<Map<String, List<XtreamEpisode>>> {
+    override val descriptor: SerialDescriptor = episodesMapSerializer.descriptor
+
+    override fun deserialize(decoder: Decoder): Map<String, List<XtreamEpisode>> {
+        val input = decoder as? JsonDecoder
+            ?: return decoder.decodeSerializableValue(episodesMapSerializer)
+        val element = input.decodeJsonElement()
+        return when (element) {
+            is JsonObject -> input.json.decodeFromJsonElement(episodesMapSerializer, element)
+            is JsonNull -> emptyMap()
+            is JsonArray -> emptyMap()
+            else -> emptyMap()
+        }
+    }
+
+    override fun serialize(encoder: Encoder, value: Map<String, List<XtreamEpisode>>) {
+        encoder.encodeSerializableValue(episodesMapSerializer, value)
     }
 }
 

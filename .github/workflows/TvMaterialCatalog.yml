@@ -19,3 +19,4 @@ jobs:
     with:
       name: TvMaterialCatalog
       path: TvMaterialCatalog
+      java-version: "17"

@@ -25,6 +25,10 @@ on:
           path:
             required: true
             type: string
+          java-version:
+            required: false
+            type: string
+            default: "11"
 
 concurrency:
   group: ${{ inputs.name }}-build-${{ github.ref }}
@@ -39,10 +43,10 @@ jobs:
             - name: Checkout
               uses: actions/checkout@v4
 
-            - name: Set up JDK 17
+            - name: Set up JDK
               uses: actions/setup-java@v4
               with:
-                java-version: 17
+                java-version: ${{ inputs.java-version }}
                 distribution: "zulu"
 
             - name: Generate cache key

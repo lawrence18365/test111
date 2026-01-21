@@ -60,9 +60,6 @@ import androidx.tv.material3.surfaceColorAtElevation
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.presentation.theme.JetStreamCardShape
-import com.google.jetstream.presentation.utils.CountryFilter
-import com.google.jetstream.presentation.utils.CountryFilterRow
-import com.google.jetstream.presentation.utils.DefaultCountryFilters
 import com.google.jetstream.presentation.utils.focusBorderStroke
 import com.google.jetstream.presentation.utils.headerBackdropBrush
 
@@ -114,43 +111,73 @@ fun XtreamVodScreen(
             }
         }
 
-        is XtreamVodUiState.CountriesLoaded -> {
-            onScroll(true)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 24.dp)
-            ) {
-                val headerBrush = headerBackdropBrush()
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(headerBrush)
-                        .padding(bottom = 8.dp)
-                ) {
-                    Text(
-                        text = "Movies",
-                        style = MaterialTheme.typography.headlineLarge,
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-                    Text(
-                        text = "Select a country to browse",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
-                    )
-                }
-
-                if (state.categories.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                is XtreamVodUiState.CategoriesLoaded -> {
+                    onScroll(true)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 48.dp, vertical = 24.dp)
                     ) {
-                        Text(
-                            text = "No categories found",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                        val headerBrush = headerBackdropBrush()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(headerBrush)
+                                .padding(bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "Movies",
+                                style = MaterialTheme.typography.headlineLarge,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = "Select a category to browse",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.65f)
+                            )
+                        }
+        
+                        if (state.categories.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No categories found",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        } else {
+                            val gridState = rememberTvLazyGridState()
+                            val isTopBarVisible by remember {
+                                derivedStateOf {
+                                    gridState.firstVisibleItemIndex == 0 &&
+                                        gridState.firstVisibleItemScrollOffset < 100
+                                }
+                            }
+                            LaunchedEffect(isTopBarVisible) {
+                                onScroll(isTopBarVisible)
+                            }
+        
+                            TvLazyVerticalGrid(
+                                columns = TvGridCells.Fixed(3),
+                                state = gridState,
+                                contentPadding = PaddingValues(bottom = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.categories, key = { it.categoryId }) { category ->
+                                    CategoryCard(
+                                        categoryName = category.categoryName,
+                                        onClick = { viewModel.selectCategory(category) }
+                                    )
+                                }
+                            }
+                        }
                     }
-                } else {
+                }
+        
+                is XtreamVodUiState.Ready -> {
                     val gridState = rememberTvLazyGridState()
                     val isTopBarVisible by remember {
                         derivedStateOf {
@@ -161,193 +188,152 @@ fun XtreamVodScreen(
                     LaunchedEffect(isTopBarVisible) {
                         onScroll(isTopBarVisible)
                     }
-
-                    TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(3),
-                        state = gridState,
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+        
+                    // Handle back to go to category selection
+                    BackHandler {
+                        viewModel.goBackToCategories()
+                    }
+        
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 48.dp, vertical = 24.dp)
                     ) {
-                        items(DefaultCountryFilters, key = { it.name }) { country ->
-                            CountryCard(
-                                country = country,
-                                onClick = { viewModel.selectCountry(country) }
-                            )
+                        val headerBrush = headerBackdropBrush()
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(headerBrush)
+                                .padding(bottom = 8.dp)
+                        ) {
+                            // Header with back hint
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Movies",
+                                    style = MaterialTheme.typography.headlineLarge
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "/ ${state.selectedCategory.categoryName}",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+        
+                            if (!state.isLoadingMovies) {
+                                Text(
+                                    text = "${state.selectedCategory.categoryName} · " +
+                                        "${state.vodItems.size} movies",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         }
-                    }
-                }
-            }
-        }
-
-        is XtreamVodUiState.Ready -> {
-            val gridState = rememberTvLazyGridState()
-            val isTopBarVisible by remember {
-                derivedStateOf {
-                    gridState.firstVisibleItemIndex == 0 &&
-                        gridState.firstVisibleItemScrollOffset < 100
-                }
-            }
-            LaunchedEffect(isTopBarVisible) {
-                onScroll(isTopBarVisible)
-            }
-
-            // Handle back to go to country selection
-            BackHandler {
-                viewModel.goBackToCountries()
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 24.dp)
-            ) {
-                val headerBrush = headerBackdropBrush()
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(headerBrush)
-                        .padding(bottom = 8.dp)
-                ) {
-                    // Header with back hint
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Movies",
-                            style = MaterialTheme.typography.headlineLarge
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "/ ${state.selectedCountry.displayName}",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    CountryFilterRow(
-                        selectedCountry = state.selectedCountry,
-                        onCountrySelected = { viewModel.selectCountry(it) }
-                    )
-
-                    if (!state.isLoadingMovies) {
-                        Text(
-                            text = "${state.selectedCountry.displayName} · " +
-                                "${state.vodItems.size} movies",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                if (state.isLoadingMovies) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Loading movies...",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                } else if (state.vodItems.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "No movies found for ${state.selectedCountry.displayName}",
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "Try USA or UK.",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                    }
-                } else {
-                    TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(5),
-                        state = gridState,
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(state.vodItems, key = { it.streamId }) { vodItem ->
-                            VodCard(
-                                vodItem = vodItem,
-                                onClick = {
-                                    onVodSelected(vodItem)
+        
+                        Spacer(modifier = Modifier.height(12.dp))
+        
+                        if (state.isLoadingMovies) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator()
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Loading movies...",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
                                 }
-                            )
+                            }
+                        } else if (state.vodItems.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "No movies found in " +
+                                            state.selectedCategory.categoryName,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                            }
+                        } else {
+                            TvLazyVerticalGrid(
+                                columns = TvGridCells.Fixed(5),
+                                state = gridState,
+                                contentPadding = PaddingValues(bottom = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.vodItems, key = { it.streamId }) { vodItem ->
+                                    VodCard(
+                                        vodItem = vodItem,
+                                        onClick = {
+                                            onVodSelected(vodItem)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CountryCard(
-    country: CountryFilter,
-    onClick: () -> Unit
-) {
-    val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-    val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f),
-        colors = CardDefaults.colors(
-            containerColor = container,
-            focusedContainerColor = focusedContainer
-        ),
-        border = CardDefaults.border(
-            focusedBorder = Border(
-                border = focusBorderStroke(),
-                shape = JetStreamCardShape
-            )
-        ),
-        scale = CardDefaults.scale(focusedScale = 1.02f),
-        shape = CardDefaults.shape(shape = JetStreamCardShape)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF2a2a2a),
-                            Color(0xFF1a1a1a)
-                        )
+        
+        @OptIn(ExperimentalTvMaterial3Api::class)
+        @Composable
+        private fun CategoryCard(
+            categoryName: String,
+            onClick: () -> Unit
+        ) {
+            val container = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+            val focusedContainer = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+            Card(
+                onClick = onClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
+                colors = CardDefaults.colors(
+                    containerColor = container,
+                    focusedContainerColor = focusedContainer
+                ),
+                border = CardDefaults.border(
+                    focusedBorder = Border(
+                        border = focusBorderStroke(),
+                        shape = JetStreamCardShape
                     )
                 ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = country.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(16.dp)
-            )
+                scale = CardDefaults.scale(focusedScale = 1.02f),
+                shape = CardDefaults.shape(shape = JetStreamCardShape)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF2a2a2a),
+                                    Color(0xFF1a1a1a)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = categoryName,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
         }
-    }
-}
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun VodCard(

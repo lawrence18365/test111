@@ -59,9 +59,6 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.google.jetstream.data.models.xtream.XtreamSeries
-import com.google.jetstream.presentation.utils.CountryFilter
-import com.google.jetstream.presentation.utils.CountryFilterRow
-import com.google.jetstream.presentation.utils.DefaultCountryFilters
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -111,36 +108,66 @@ fun XtreamSeriesScreen(
             }
         }
 
-        is XtreamSeriesUiState.CountriesLoaded -> {
-            onScroll(true)
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 24.dp)
-            ) {
-                Text(
-                    text = "TV Shows",
-                    style = MaterialTheme.typography.headlineLarge,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                Text(
-                    text = "Select a country to browse",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
-                if (state.categories.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                is XtreamSeriesUiState.CategoriesLoaded -> {
+                    onScroll(true)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 48.dp, vertical = 24.dp)
                     ) {
                         Text(
-                            text = "No categories found",
-                            style = MaterialTheme.typography.bodyLarge
+                            text = "TV Shows",
+                            style = MaterialTheme.typography.headlineLarge,
+                            modifier = Modifier.padding(bottom = 8.dp)
                         )
+                        Text(
+                            text = "Select a category to browse",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+        
+                        if (state.categories.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No categories found",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        } else {
+                            val gridState = rememberTvLazyGridState()
+                            val isTopBarVisible by remember {
+                                derivedStateOf {
+                                    gridState.firstVisibleItemIndex == 0 &&
+                                        gridState.firstVisibleItemScrollOffset < 100
+                                }
+                            }
+                            LaunchedEffect(isTopBarVisible) {
+                                onScroll(isTopBarVisible)
+                            }
+        
+                            TvLazyVerticalGrid(
+                                columns = TvGridCells.Fixed(3),
+                                state = gridState,
+                                contentPadding = PaddingValues(bottom = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.categories, key = { it.categoryId }) { category ->
+                                    CategoryCard(
+                                        categoryName = category.categoryName,
+                                        onClick = { viewModel.selectCategory(category) }
+                                    )
+                                }
+                            }
+                        }
                     }
-                } else {
+                }
+        
+                is XtreamSeriesUiState.Ready -> {
                     val gridState = rememberTvLazyGridState()
                     val isTopBarVisible by remember {
                         derivedStateOf {
@@ -151,167 +178,132 @@ fun XtreamSeriesScreen(
                     LaunchedEffect(isTopBarVisible) {
                         onScroll(isTopBarVisible)
                     }
-
-                    TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(3),
-                        state = gridState,
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+        
+                    // Handle back to go to category selection
+                    BackHandler {
+                        viewModel.goBackToCategories()
+                    }
+        
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 48.dp, vertical = 24.dp)
                     ) {
-                        items(DefaultCountryFilters, key = { it.name }) { country ->
-                            CountryCard(
-                                country = country,
-                                onClick = { viewModel.selectCountry(country) }
+                        // Header with back hint
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        ) {
+                            Text(
+                                text = "TV Shows",
+                                style = MaterialTheme.typography.headlineLarge
                             )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "/ ${state.selectedCategory.categoryName}",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color(0xFF00b4d8)
+                            )
+                        }
+        
+                        Spacer(modifier = Modifier.height(16.dp))
+        
+                        if (state.isLoadingSeries) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator()
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "Loading TV shows...",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        } else if (state.seriesList.isEmpty()) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No TV shows found in " +
+                                        state.selectedCategory.categoryName,
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "${state.seriesList.size} shows",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+        
+                            TvLazyVerticalGrid(
+                                columns = TvGridCells.Fixed(5),
+                                state = gridState,
+                                contentPadding = PaddingValues(bottom = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(state.seriesList, key = { it.seriesId }) { series ->
+                                    SeriesCard(
+                                        series = series,
+                                        onClick = { onSeriesSelected(series) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-
-        is XtreamSeriesUiState.Ready -> {
-            val gridState = rememberTvLazyGridState()
-            val isTopBarVisible by remember {
-                derivedStateOf {
-                    gridState.firstVisibleItemIndex == 0 &&
-                        gridState.firstVisibleItemScrollOffset < 100
-                }
-            }
-            LaunchedEffect(isTopBarVisible) {
-                onScroll(isTopBarVisible)
-            }
-
-            // Handle back to go to country selection
-            BackHandler {
-                viewModel.goBackToCountries()
-            }
-
-            Column(
+        
+        @OptIn(ExperimentalTvMaterial3Api::class)
+        @Composable
+        private fun CategoryCard(
+            categoryName: String,
+            onClick: () -> Unit
+        ) {
+            Card(
+                onClick = onClick,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp, vertical = 24.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f),
+                colors = CardDefaults.colors(
+                    containerColor = Color(0xFF1E1E1E)
+                ),
+                border = CardDefaults.border(
+                    focusedBorder = Border(
+                        border = BorderStroke(2.dp, Color(0xFF00b4d8))
+                    )
+                )
             ) {
-                // Header with back hint
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF2a2a2a),
+                                    Color(0xFF1a1a1a)
+                                )
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "TV Shows",
-                        style = MaterialTheme.typography.headlineLarge
+                        text = categoryName,
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(16.dp)
                     )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(
-                        text = "/ ${state.selectedCountry.displayName}",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color(0xFF00b4d8)
-                    )
-                }
-
-                CountryFilterRow(
-                    selectedCountry = state.selectedCountry,
-                    onCountrySelected = { viewModel.selectCountry(it) }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (state.isLoadingSeries) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Loading TV shows...",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                } else if (state.seriesList.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "No TV shows found for ${state.selectedCountry.displayName}",
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                    }
-                } else {
-                    Text(
-                        text = "${state.seriesList.size} shows",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-
-                    TvLazyVerticalGrid(
-                        columns = TvGridCells.Fixed(5),
-                        state = gridState,
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(state.seriesList, key = { it.seriesId }) { series ->
-                            SeriesCard(
-                                series = series,
-                                onClick = { onSeriesSelected(series) }
-                            )
-                        }
-                    }
                 }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalTvMaterial3Api::class)
-@Composable
-private fun CountryCard(
-    country: CountryFilter,
-    onClick: () -> Unit
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(16f / 9f),
-        colors = CardDefaults.colors(
-            containerColor = Color(0xFF1E1E1E)
-        ),
-        border = CardDefaults.border(
-            focusedBorder = Border(
-                border = BorderStroke(2.dp, Color(0xFF00b4d8))
-            )
-        )
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF2a2a2a),
-                            Color(0xFF1a1a1a)
-                        )
-                    )
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = country.displayName,
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SeriesCard(

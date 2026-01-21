@@ -20,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -69,10 +70,14 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsState()
     val focusManager = LocalFocusManager.current
     val serverFocusRequester = remember { FocusRequester() }
+    val m3uFocusRequester = remember { FocusRequester() }
 
+    var selectedTab by remember { mutableStateOf(0) } // 0: Xtream, 1: M3U
+    
     var serverUrl by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var m3uUrl by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
 
     // Reset state when screen is first displayed (e.g., after logout)
@@ -87,9 +92,10 @@ fun LoginScreen(
         }
     }
 
-    // Request focus on server field when screen loads
-    LaunchedEffect(Unit) {
-        serverFocusRequester.requestFocus()
+    // Request focus on appropriate field when screen loads or tab changes
+    LaunchedEffect(selectedTab) {
+        if (selectedTab == 0) serverFocusRequester.requestFocus()
+        else m3uFocusRequester.requestFocus()
     }
 
     Box(
@@ -108,7 +114,7 @@ fun LoginScreen(
     ) {
         Column(
             modifier = Modifier
-                .width(400.dp)
+                .width(450.dp)
                 .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -129,111 +135,159 @@ fun LoginScreen(
 
             // App Title
             Text(
-                text = "IPTV Player",
+                text = "StreamOne",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            Text(
-                text = "Connect to your Xtream Codes server",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.7f)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Server URL Field
-            Text(
-                text = "Server URL",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            TextField(
-                value = serverUrl,
-                onValueChange = { serverUrl = it },
-                placeholder = { Text("http://example.com:8080") },
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(serverFocusRequester),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Uri,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Username Field
-            Text(
-                text = "Username",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            TextField(
-                value = username,
-                onValueChange = { username = it },
-                placeholder = { Text("Your username") },
-                singleLine = true,
+            // Tab Selector
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Next
-                ),
-                keyboardActions = KeyboardActions(
-                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { selectedTab = 0 },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (selectedTab == 0) Color(0xFF00b4d8) else Color.DarkGray
+                    )
+                ) {
+                    Text("Xtream Codes")
+                }
+                Button(
+                    onClick = { selectedTab = 1 },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (selectedTab == 1) Color(0xFF00b4d8) else Color.DarkGray
+                    )
+                ) {
+                    Text("M3U Playlist")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            if (selectedTab == 0) {
+                // Xtream Login Fields
+                Text(
+                    text = "Server URL",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.fillMaxWidth()
                 )
-            )
+                Spacer(modifier = Modifier.height(6.dp))
+                TextField(
+                    value = serverUrl,
+                    onValueChange = { serverUrl = it },
+                    placeholder = { Text("http://example.com:8080") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(serverFocusRequester),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    )
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Password Field
-            Text(
-                text = "Password",
-                style = MaterialTheme.typography.titleSmall,
-                color = Color.White.copy(alpha = 0.85f),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            TextField(
-                value = password,
-                onValueChange = { password = it },
-                placeholder = { Text("Your password") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = textFieldColors,
-                visualTransformation = if (showPassword) {
-                    VisualTransformation.None
-                } else {
-                    PasswordVisualTransformation()
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Password,
-                    imeAction = ImeAction.Done
-                ),
-                keyboardActions = KeyboardActions(
-                    onDone = {
-                        if (
-                            serverUrl.isNotBlank() &&
-                            username.isNotBlank() &&
-                            password.isNotBlank()
-                        ) {
-                            viewModel.login(serverUrl, username, password)
+                Text(
+                    text = "Username",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                TextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    placeholder = { Text("Your username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Password",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                TextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    placeholder = { Text("Your password") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = textFieldColors,
+                    visualTransformation = if (showPassword) {
+                        VisualTransformation.None
+                    } else {
+                        PasswordVisualTransformation()
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (serverUrl.isNotBlank() &&
+                                username.isNotBlank() &&
+                                password.isNotBlank()
+                            ) {
+                                viewModel.login(serverUrl, username, password)
+                            }
                         }
-                    }
+                    )
                 )
-            )
+            } else {
+                // M3U Login Field
+                Text(
+                    text = "M3U URL",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                TextField(
+                    value = m3uUrl,
+                    onValueChange = { m3uUrl = it },
+                    placeholder = { Text("http://example.com/playlist.m3u") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(m3uFocusRequester),
+                    colors = textFieldColors,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onDone = {
+                            if (m3uUrl.isNotBlank()) {
+                                viewModel.loginWithM3u(m3uUrl)
+                            }
+                        }
+                    )
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -252,12 +306,16 @@ fun LoginScreen(
             // Login Button
             Button(
                 onClick = {
-                    viewModel.login(serverUrl, username, password)
+                    if (selectedTab == 0) viewModel.login(serverUrl, username, password)
+                    else viewModel.loginWithM3u(m3uUrl)
                 },
-                enabled = serverUrl.isNotBlank() &&
-                    username.isNotBlank() &&
-                    password.isNotBlank() &&
-                    uiState !is LoginUiState.Loading,
+                enabled = uiState !is LoginUiState.Loading && (
+                    (selectedTab == 0 &&
+                        serverUrl.isNotBlank() &&
+                        username.isNotBlank() &&
+                        password.isNotBlank()) ||
+                        (selectedTab == 1 && m3uUrl.isNotBlank())
+                ),
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xFF00b4d8),
@@ -274,22 +332,23 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Show/Hide Password Toggle
-            OutlinedButton(
-                onClick = { showPassword = !showPassword },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (showPassword) "Hide Password" else "Show Password")
+            if (selectedTab == 0) {
+                Spacer(modifier = Modifier.height(16.dp))
+                // Show/Hide Password Toggle
+                OutlinedButton(
+                    onClick = { showPassword = !showPassword },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (showPassword) "Hide Password" else "Show Password")
+                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Help text
             Text(
-                text = "Enter your IPTV provider credentials.\n" +
-                    "Contact your provider if you don't have login details.",
+                text = "Enter your IPTV provider details.\n" +
+                    "Contact your provider if you don't have login info.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.White.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center

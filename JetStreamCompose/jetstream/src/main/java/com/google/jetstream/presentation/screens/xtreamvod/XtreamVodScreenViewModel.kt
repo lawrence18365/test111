@@ -33,10 +33,10 @@ import kotlinx.coroutines.launch
 
 sealed interface XtreamVodUiState {
     data object Loading : XtreamVodUiState
-    data class CountriesLoaded(val categories: List<XtreamCategory>) : XtreamVodUiState
+    data class CategoriesLoaded(val categories: List<XtreamCategory>) : XtreamVodUiState
     data class Ready(
         val categories: List<XtreamCategory>,
-        val selectedCountry: CountryFilter,
+        val selectedCategory: XtreamCategory,
         val vodItems: List<XtreamVodItem>,
         val isLoadingMovies: Boolean = false
     ) : XtreamVodUiState
@@ -54,7 +54,7 @@ class XtreamVodScreenViewModel @Inject constructor(
     private var categories: List<XtreamCategory> = emptyList()
     // Cache loaded movies by category to avoid re-fetching
     private val vodCache = mutableMapOf<String, List<XtreamVodItem>>()
-    private val countryCache = mutableMapOf<CountryFilter, List<XtreamVodItem>>()
+    private val countryCache = mutableMapOf<CountryFilter, Set<String>>()
 
     init {
         loadCategories()
@@ -67,7 +67,7 @@ class XtreamVodScreenViewModel @Inject constructor(
             when (val categoriesResult = xtreamRepository.getVodCategories()) {
                 is XtreamResult.Success -> {
                     categories = categoriesResult.data
-                    _uiState.value = XtreamVodUiState.CountriesLoaded(categories = categories)
+                    _uiState.value = XtreamVodUiState.CategoriesLoaded(categories = categories)
                 }
                 is XtreamResult.Error -> {
                     _uiState.value = XtreamVodUiState.Error(categoriesResult.message)
@@ -79,11 +79,12 @@ class XtreamVodScreenViewModel @Inject constructor(
         }
     }
 
-    fun selectCountry(country: CountryFilter) {
-        countryCache[country]?.let { cachedItems ->
+    fun selectCategory(category: XtreamCategory) {
+        val categoryId = category.categoryId
+        vodCache[categoryId]?.let { cachedItems ->
             _uiState.value = XtreamVodUiState.Ready(
                 categories = categories,
-                selectedCountry = country,
+                selectedCategory = category,
                 vodItems = cachedItems
             )
             return
@@ -92,80 +93,34 @@ class XtreamVodScreenViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = XtreamVodUiState.Ready(
                 categories = categories,
-                selectedCountry = country,
+                selectedCategory = category,
                 vodItems = emptyList(),
                 isLoadingMovies = true
             )
 
-            // Optimization for ALL: Fetch everything in one go
-            if (country == CountryFilter.ALL) {
-                when (val result = xtreamRepository.getVodStreams()) {
-                    is XtreamResult.Success -> {
-                        val items = result.data
-                        countryCache[country] = items
-                        _uiState.value = XtreamVodUiState.Ready(
-                            categories = categories,
-                            selectedCountry = country,
-                            vodItems = items,
-                            isLoadingMovies = false
-                        )
-                        return@launch
-                    }
-                    is XtreamResult.Error -> {
-                        _uiState.value = XtreamVodUiState.Error(result.message)
-                        return@launch
-                    }
-                    else -> {}
+            when (val vodResult = xtreamRepository.getVodStreamsByCategory(categoryId)) {
+                is XtreamResult.Success -> {
+                    val items = vodResult.data
+                    vodCache[categoryId] = items
+                    _uiState.value = XtreamVodUiState.Ready(
+                        categories = categories,
+                        selectedCategory = category,
+                        vodItems = items,
+                        isLoadingMovies = false
+                    )
+                }
+                is XtreamResult.Error -> {
+                    _uiState.value = XtreamVodUiState.Error(vodResult.message)
+                }
+                else -> {
+                    _uiState.value = XtreamVodUiState.Error("Failed to load movies")
                 }
             }
-
-            val categoryIds = categoryIdsForCountry(categories, country)
-            if (categoryIds.isEmpty()) {
-                _uiState.value = XtreamVodUiState.Ready(
-                    categories = categories,
-                    selectedCountry = country,
-                    vodItems = emptyList(),
-                    isLoadingMovies = false
-                )
-                return@launch
-            }
-
-            val allItems = mutableListOf<XtreamVodItem>()
-            for (categoryId in categoryIds) {
-                val cachedItems = vodCache[categoryId]
-                if (cachedItems != null) {
-                    allItems.addAll(cachedItems)
-                    continue
-                }
-                when (val vodResult = xtreamRepository.getVodStreamsByCategory(categoryId)) {
-                    is XtreamResult.Success -> {
-                        vodCache[categoryId] = vodResult.data
-                        allItems.addAll(vodResult.data)
-                    }
-                    is XtreamResult.Error -> {
-                        _uiState.value = XtreamVodUiState.Error(vodResult.message)
-                        return@launch
-                    }
-                    else -> {
-                        _uiState.value = XtreamVodUiState.Error("Failed to load movies")
-                        return@launch
-                    }
-                }
-            }
-
-            val distinctItems = allItems.distinctBy { it.streamId }
-            countryCache[country] = distinctItems
-            _uiState.value = XtreamVodUiState.Ready(
-                categories = categories,
-                selectedCountry = country,
-                vodItems = distinctItems,
-                isLoadingMovies = false
-            )
         }
     }
 
-    fun goBackToCountries() {
-        _uiState.value = XtreamVodUiState.CountriesLoaded(categories = categories)
+    fun goBackToCategories() {
+        _uiState.value = XtreamVodUiState.CategoriesLoaded(categories = categories)
     }
 
     suspend fun getStreamUrl(vodItem: XtreamVodItem): String? {

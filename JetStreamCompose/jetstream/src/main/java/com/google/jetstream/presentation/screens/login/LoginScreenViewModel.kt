@@ -68,6 +68,26 @@ class LoginScreenViewModel @Inject constructor(
         }
     }
 
+    fun loginWithM3u(m3uUrl: String) {
+        if (m3uUrl.isBlank()) {
+            _uiState.value = LoginUiState.Error("Please enter an M3U URL")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = LoginUiState.Loading
+            when (val result = xtreamRepository.setM3uUrl(m3uUrl)) {
+                is XtreamResult.Success -> {
+                    _uiState.value = LoginUiState.Success
+                }
+                is XtreamResult.Error -> {
+                    _uiState.value = LoginUiState.Error(result.message)
+                }
+                else -> {}
+            }
+        }
+    }
+
     private fun normalizeServerUrl(url: String): String {
         var normalized = url.trim()
 

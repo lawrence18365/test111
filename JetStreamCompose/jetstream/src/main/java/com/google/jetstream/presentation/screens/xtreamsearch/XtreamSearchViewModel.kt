@@ -143,7 +143,10 @@ class XtreamSearchViewModel @Inject constructor(
      * Check if any of the provided fields contain the search query.
      * Returns true if at least one field matches.
      */
-    private fun matchesAnyField(queryClean: String, vararg fields: String?): Boolean {
+    private fun matchesAnyField(
+        queryClean: String,
+        vararg fields: String?
+    ): Boolean {
         return fields.any { field ->
             field != null && sanitize(field).contains(queryClean)
         }
@@ -352,7 +355,10 @@ class XtreamSearchViewModel @Inject constructor(
             when (val catResult = xtreamRepository.getSeriesCategories()) {
                 is XtreamResult.Success -> {
                     cachedSeriesCategories = catResult.data
-                    seriesCategoryMap = catResult.data.associate { it.categoryId to it.categoryName }
+                    seriesCategoryMap =
+                        catResult.data.associate {
+                            it.categoryId to it.categoryName
+                        }
                 }
                 else -> {} // Continue even if categories fail
             }

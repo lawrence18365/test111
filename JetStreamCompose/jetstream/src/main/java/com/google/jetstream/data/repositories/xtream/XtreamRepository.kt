@@ -32,12 +32,14 @@ import com.google.jetstream.data.models.xtream.XtreamUrlBuilder
 import com.google.jetstream.data.models.xtream.XtreamVodInfoResponse
 import com.google.jetstream.data.models.xtream.XtreamVodItem
 import com.google.jetstream.data.network.XtreamApiService
+import com.google.jetstream.data.repositories.M3uRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -55,36 +57,28 @@ sealed class XtreamResult<out T> {
 class XtreamRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val apiService: XtreamApiService,
+    private val m3uRepository: M3uRepository,
     private val json: Json
 ) {
     companion object {
         private val KEY_CREDENTIALS = stringPreferencesKey("credentials")
-        private val KEY_CURRENT_SERVER = stringPreferencesKey("current_server")
+        private val KEY_M3U_URL = stringPreferencesKey("m3u_url")
     }
 
-    // Cached credentials for quick access
-    private var cachedCredentials: XtreamCredentials? = null
-
     /**
-     * Observe stored credentials
+     * Check if user is logged in (either Xtream or M3U)
      */
+    val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[KEY_CREDENTIALS] != null || preferences[KEY_M3U_URL] != null
+    }
+
     val credentialsFlow: Flow<XtreamCredentials?> = context.dataStore.data.map { preferences ->
-        preferences[KEY_CREDENTIALS]?.let { credentialsJson ->
-            try {
-                json.decodeFromString<XtreamCredentials>(credentialsJson)
-            } catch (e: Exception) {
-                null
-            }
-        }
+        val stored = preferences[KEY_CREDENTIALS] ?: return@map null
+        runCatching { json.decodeFromString<XtreamCredentials>(stored) }.getOrNull()
     }
 
     /**
-     * Check if user is logged in
-     */
-    val isLoggedIn: Flow<Boolean> = credentialsFlow.map { it != null }
-
-    /**
-     * Authenticate with Xtream Codes server
+     * Authenticate with Xtream Codes and store credentials
      */
     suspend fun authenticate(
         serverUrl: String,
@@ -94,55 +88,62 @@ class XtreamRepository @Inject constructor(
         return try {
             val url = XtreamUrlBuilder.buildApiUrl(serverUrl, username, password)
             val response = apiService.authenticate(url)
-
             if (response.isSuccessful) {
-                val authResponse = response.body()
-                if (authResponse != null && authResponse.userInfo.auth == 1) {
-                    // Save credentials on successful auth
-                    val credentials = XtreamCredentials(
-                        serverUrl = serverUrl,
-                        username = username,
-                        password = password
-                    )
-                    saveCredentials(credentials)
-                    XtreamResult.Success(authResponse)
+                val body = response.body()
+                if (body != null && body.userInfo.auth == 1) {
+                    saveCredentials(XtreamCredentials(serverUrl, username, password))
+                    XtreamResult.Success(body)
                 } else {
-                    XtreamResult.Error("Authentication failed: Invalid credentials")
+                    XtreamResult.Error(body?.userInfo?.message ?: "Authentication failed")
                 }
             } else {
-                XtreamResult.Error("Server error: ${response.code()}", response.code())
+                XtreamResult.Error("Authentication failed", response.code())
             }
         } catch (e: Exception) {
-            XtreamResult.Error("Connection failed: ${e.message}")
+            XtreamResult.Error("Error: ${e.message}")
         }
     }
 
     /**
-     * Save credentials to DataStore
+     * Set M3U URL and load it
      */
+    suspend fun setM3uUrl(url: String): XtreamResult<Boolean> {
+        return try {
+            val items = m3uRepository.loadPlaylist(url)
+            if (items.isNotEmpty()) {
+                context.dataStore.edit { preferences ->
+                    preferences[KEY_M3U_URL] = url
+                    preferences.remove(KEY_CREDENTIALS) // Clear Xtream if switching to M3U
+                }
+                XtreamResult.Success(true)
+            } else {
+                XtreamResult.Error("M3U playlist is empty or invalid")
+            }
+        } catch (e: Exception) {
+            XtreamResult.Error("Failed to load M3U: ${e.message}")
+        }
+    }
+
+    private suspend fun isM3uMode(): Boolean {
+        val preferences = context.dataStore.data.first()
+        return preferences[KEY_M3U_URL] != null
+    }
+
+    private suspend fun getCredentials(): XtreamCredentials? {
+        return credentialsFlow.first()
+    }
+
     private suspend fun saveCredentials(credentials: XtreamCredentials) {
-        cachedCredentials = credentials
         context.dataStore.edit { preferences ->
             preferences[KEY_CREDENTIALS] = json.encodeToString(credentials)
+            preferences.remove(KEY_M3U_URL)
         }
     }
 
-    /**
-     * Get current credentials
-     */
-    suspend fun getCredentials(): XtreamCredentials? {
-        if (cachedCredentials != null) return cachedCredentials
-        cachedCredentials = credentialsFlow.first()
-        return cachedCredentials
-    }
-
-    /**
-     * Clear credentials (logout)
-     */
     suspend fun logout() {
-        cachedCredentials = null
         context.dataStore.edit { preferences ->
             preferences.remove(KEY_CREDENTIALS)
+            preferences.remove(KEY_M3U_URL)
         }
     }
 
@@ -150,7 +151,12 @@ class XtreamRepository @Inject constructor(
      * Get live stream categories
      */
     suspend fun getLiveCategories(): XtreamResult<List<XtreamCategory>> {
+        if (isM3uMode()) {
+            return XtreamResult.Success(m3uRepository.getCategories())
+        }
         val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
+        // ... (rest of original code)
+
         return try {
             val url = XtreamUrlBuilder.buildApiUrl(
                 creds.serverUrl, creds.username, creds.password, "get_live_categories"
@@ -170,6 +176,9 @@ class XtreamRepository @Inject constructor(
      * Get all live streams
      */
     suspend fun getLiveStreams(): XtreamResult<List<XtreamChannel>> {
+        if (isM3uMode()) {
+            return XtreamResult.Success(m3uRepository.getAllChannels())
+        }
         val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
         return try {
             val url = XtreamUrlBuilder.buildApiUrl(
@@ -190,6 +199,9 @@ class XtreamRepository @Inject constructor(
      * Get live streams by category
      */
     suspend fun getLiveStreamsByCategory(categoryId: String): XtreamResult<List<XtreamChannel>> {
+        if (isM3uMode()) {
+            return XtreamResult.Success(m3uRepository.getChannelsByCategory(categoryId))
+        }
         val creds = getCredentials() ?: return XtreamResult.Error("Not logged in")
         return try {
             val url = XtreamUrlBuilder.buildApiUrl(
@@ -381,6 +393,9 @@ class XtreamRepository @Inject constructor(
      * Build a playable stream URL for a live channel
      */
     suspend fun buildLiveStreamUrl(streamId: Int): String? {
+        if (isM3uMode()) {
+            return m3uRepository.getAllChannels().find { it.streamId == streamId }?.directSource
+        }
         val creds = getCredentials() ?: return null
         return XtreamUrlBuilder.buildLiveStreamUrl(
             creds.serverUrl, creds.username, creds.password, streamId
@@ -391,6 +406,9 @@ class XtreamRepository @Inject constructor(
      * Build a playable stream URL for VOD
      */
     suspend fun buildVodStreamUrl(streamId: Int, extension: String = "mp4"): String? {
+        if (isM3uMode()) {
+            return m3uRepository.getAllChannels().find { it.streamId == streamId }?.directSource
+        }
         val creds = getCredentials() ?: return null
         return XtreamUrlBuilder.buildVodStreamUrl(
             creds.serverUrl, creds.username, creds.password, streamId, extension
